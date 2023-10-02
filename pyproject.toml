@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "geollama"
+version = "0.1.0"
+description = "A Python package for estimating sample thickness in cryo electron tomograms"
+authors = ["Neville Yee <neville.yee@rfi.ac.uk>"]
+license = "Apache V2"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.10.12"
+numpy = "^1.26.0"
+scipy = "^1.11.3"
+plotly = "^5.17.0"
+scikit-image = "^0.21.0"
+scikit-learn = "^1.3.1"
+scikit-spatial = "^7.0.0"
+mrcfile = "^1.4.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
