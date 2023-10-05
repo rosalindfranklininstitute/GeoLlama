@@ -18,6 +18,9 @@ scipy = "1.10"
 pytest = "^7.4.2"
 typer = {extras = ["all"], version = "^0.9.0"}
 
+[tool.poetry.scripts]
+geollama = "GeoLlama.main:app"
+
 
 [build-system]
 requires = ["poetry-core"]

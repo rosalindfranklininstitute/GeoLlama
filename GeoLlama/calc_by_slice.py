@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.calc_by_slice  ##
 ## Created            : Neville Yee             ##
 ## Date created       : 02-Oct-2023             ##
-## Date last modified : 02-Oct-2023             ##
+## Date last modified : 03-Oct-2023             ##
 ##################################################
 
 
@@ -29,7 +29,7 @@ from sklearn.cluster import (DBSCAN, OPTICS)
 from scipy.stats import mode, chi2
 
 
-def create_slice_views(volume: np.NDArray[any],
+def create_slice_views(volume: npt.NDArray[any],
                        coords: list,
                        std_window: int=15
 ) -> (npt.NDArray[any], npt.NDArray[any], npt.NDArray[any]):
@@ -46,7 +46,7 @@ def create_slice_views(volume: np.NDArray[any],
     return (view_xy, view_zy, view_zx)
 
 
-def evaluate_slice(volume: np.NDArray[any],
+def evaluate_slice(volume: npt.NDArray[any],
                    pixel_size_nm: float,
                    slice_coords: list,
                    use_view: str="YZ"
