@@ -26,6 +26,8 @@ import numpy.typing as npt
 from skimage.filters import threshold_otsu as otsu
 
 from sklearn.cluster import (DBSCAN, OPTICS)
+from sklearn.decomposition import PCA
+
 from scipy.stats import mode, chi2
 
 
@@ -35,9 +37,9 @@ def create_slice_views(volume: npt.NDArray[any],
 ) -> (npt.NDArray[any], npt.NDArray[any], npt.NDArray[any]):
 
     std_half = std_window // 2
-    z_range = (max(0, coords[0]-std_window_half), min(coords[0]+std_window-std_window_half, volume.shape[0]-1))
-    x_range = (max(0, coords[1]-std_window_half), min(coords[1]+std_window-std_window_half, volume.shape[1]-1))
-    y_range = (max(0, coords[2]-std_window_half), min(coords[2]+std_window-std_window_half, volume.shape[2]-1))
+    z_range = (max(0, coords[0]-std_half), min(coords[0]+std_window-std_half, volume.shape[0]-1))
+    x_range = (max(0, coords[1]-std_half), min(coords[1]+std_window-std_half, volume.shape[1]-1))
+    y_range = (max(0, coords[2]-std_half), min(coords[2]+std_window-std_half, volume.shape[2]-1))
 
     view_xy = np.std(volume[z_range[0]: z_range[1], :, :], axis=0)
     view_zy = np.std(volume[:, x_range[0]: x_range[1], :], axis=1)
@@ -65,7 +67,7 @@ def evaluate_slice(volume: npt.NDArray[any],
 
     # Step 1: Greyvalue thresholding with Otsu method
     thres = otsu(view**2) * 1.25
-    mask_s1 = np.argwhere(target**2 >= thres)
+    mask_s1 = np.argwhere(view**2 >= thres)
     centroid_s1 = mask_s1.mean(axis=0)
 
     # Step 2: Use Mahalanobis distance to remove potential outliers
@@ -73,11 +75,11 @@ def evaluate_slice(volume: npt.NDArray[any],
     pts_deviation = mask_s1 - centroid_s1
     maha_dist = np.dot(np.dot(pts_deviation, covar_inv), pts_deviation.T).diagonal()
     p_val = 1 - chi2.cdf(np.sqrt(maha_dist), 1)
-    mask_s2 = np.delete(mask_s1, np.argwhere(p<0.08), axis=0)
+    mask_s2 = np.delete(mask_s1, np.argwhere(p_val<0.08), axis=0)
 
     # Step 3: Use distance-based clustering to find sample region
     clusters = DBSCAN(eps=15, min_samples=15).fit_predict(mask_s2)
-    mask_s3_args = np.argwhere(cluster==mode(clusters, keepdims=True).mode)
+    mask_s3_args = np.argwhere(clusters==mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
     centroid_s3 = mask_s3.mean(axis=0)
 
@@ -89,11 +91,11 @@ def evaluate_slice(volume: npt.NDArray[any],
     rectangle_dims = eigenvals * 4      # 4 times SD to cover nearly all points
 
     if eigenvecs[1,0] < 0:
-        eigenvector[1] *= -1
+        eigenvecs[1] *= -1
     angle = np.rad2deg(np.arctan2(-eigenvecs[np.argmin(eigenvals), 1],
                                   eigenvecs[np.argmin(eigenvals), 0]))
 
-    slice_breadth, slice_thickness = eigenvals * pixel_size_nm
+    slice_breadth, slice_thickness = rectangle_dims * pixel_size_nm
 
     return (slice_breadth, slice_thickness, angle)
 
