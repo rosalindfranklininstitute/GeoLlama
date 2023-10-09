@@ -20,12 +20,15 @@
 #########################################
 
 import os
+from pprint import pprint
 from pathlib import Path
 import typing
 
 import typer
+from tabulate import tabulate
 
 from GeoLlama import io
+from GeoLlama import evaluate
 from GeoLlama import calc_by_slice as CBS
 
 
@@ -126,10 +129,19 @@ def main(
         )
 
         if batch:
-            pass
+            filelist = evaluate.find_files(path=user_path)
+            dataframe = evaluate.eval_batch(
+                filelist=filelist,
+                pixel_size=pixel_size,
+                binning=binning
+            )
+            pprint(tabulate(dataframe,
+                            headers="keys",
+                            tablefmt="pretty",
+            ))
 
         else:
-            results = GL_single(
+            results = evaluate.eval_single(
                 fname=user_path,
                 pixel_size=pixel_size,
                 binning=binning)
