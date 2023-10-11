@@ -44,6 +44,7 @@ def eval_single(
         fname: str,
         pixel_size: float,
         binning: int,
+        cpu: int
 ):
     """
     Some docstring
@@ -58,6 +59,7 @@ def eval_single(
     yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std = CBS.evaluate_full_lamella(
         volume=tomo,
         pixel_size_nm=pixel_size,
+        cpu=cpu,
     )
 
     return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std)
@@ -66,7 +68,8 @@ def eval_single(
 def eval_batch(
         filelist: list,
         pixel_size: float,
-        binning: int
+        binning: int,
+        cpu: int,
 ):
     """
     Some docstring
@@ -92,6 +95,7 @@ def eval_batch(
                 fname=tomo,
                 pixel_size=pixel_size,
                 binning=binning,
+                cpu=cpu,
             )
 
             thickness_mean_list.append(yz_mean[1])
@@ -108,7 +112,7 @@ def eval_batch(
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_std_list[idx]:.2f}")
 
     data = pd.DataFrame(
-        {"filename": filelist,
+        {"filename": [f.name for f in filelist],
          "Thickness (nm)": thickness_list,
          "X-tilt (degs)": xtilt_list,
          "Y-tilt (degs)": ytilt_list,

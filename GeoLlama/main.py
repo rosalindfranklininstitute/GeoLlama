@@ -113,6 +113,11 @@ def main(
             help="Binning factor for tomogram evaluation.",
             show_default=True,
         ),
+        cpu: int = typer.Option(
+            1, "-np", "--num_proc",
+            help="Number of CPUs used.",
+            show_default=True,
+        ),
 ):
     """
     SOME DOCSTRING
@@ -133,17 +138,20 @@ def main(
             dataframe = evaluate.eval_batch(
                 filelist=filelist,
                 pixel_size=pixel_size,
-                binning=binning
+                binning=binning,
+                cpu=cpu
             )
-            pprint(tabulate(dataframe,
-                            headers="keys",
-                            tablefmt="pretty",
+            print(tabulate(dataframe,
+                           headers="keys",
+                           tablefmt="pretty",
             ))
 
         else:
             results = evaluate.eval_single(
                 fname=user_path,
                 pixel_size=pixel_size,
-                binning=binning)
+                binning=binning,
+                cpu=cpu
+            )
 
             yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std = results
