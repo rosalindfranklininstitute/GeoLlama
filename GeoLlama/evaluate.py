@@ -70,7 +70,7 @@ def eval_batch(
         pixel_size: float,
         binning: int,
         cpu: int,
-):
+) -> (pd.DataFrame, pd.DataFrame):
     """
     Some docstring
     """
@@ -111,7 +111,18 @@ def eval_batch(
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_std_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_std_list[idx]:.2f}")
 
-    data = pd.DataFrame(
+    raw_data = pd.DataFrame(
+        {"filename": [f.name for f in filelist],
+         "Mean thickness (nm)": thickness_mean_list,
+         "Thickness s.d. (nm)": thickness_std_list,
+         "Mean X-tilt (degs)": xtilt_mean_list,
+         "X-tilt s.d. (degs)": xtilt_std_list,
+         "Mean Y-tilt (degs)": ytilt_mean_list,
+         "Y-tilt s.d. (degs)": ytilt_std_list,
+        }
+    )
+
+    show_data = pd.DataFrame(
         {"filename": [f.name for f in filelist],
          "Thickness (nm)": thickness_list,
          "X-tilt (degs)": xtilt_list,
@@ -119,4 +130,4 @@ def eval_batch(
         }
     )
 
-    return data
+    return (raw_data, show_data)

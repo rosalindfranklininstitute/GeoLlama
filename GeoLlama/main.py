@@ -25,6 +25,7 @@ from pathlib import Path
 import typing
 
 import typer
+import starfile
 from tabulate import tabulate
 
 from GeoLlama import io
@@ -118,6 +119,16 @@ def main(
             help="Number of CPUs used.",
             show_default=True,
         ),
+        out_csv: typing.Optional[str] = typer.Option(
+            None, "-oc", "--csv",
+            help="Output path for CSV file.",
+            show_default=True,
+        ),
+        out_star: typing.Optional[str] = typer.Option(
+            None, "-os", "--star",
+            help="Output path for STAR file.",
+            show_default=True,
+        ),
 ):
     """
     SOME DOCSTRING
@@ -135,16 +146,21 @@ def main(
 
         if batch:
             filelist = evaluate.find_files(path=user_path)
-            dataframe = evaluate.eval_batch(
+            raw_df, show_df = evaluate.eval_batch(
                 filelist=filelist,
                 pixel_size=pixel_size,
                 binning=binning,
                 cpu=cpu
             )
-            print(tabulate(dataframe,
+            print(tabulate(show_df,
                            headers="keys",
                            tablefmt="pretty",
             ))
+
+            if out_csv is not None:
+                raw_df.to_csv(out_csv)
+            if out_star is not None:
+                starfile.write(raw_df, out_star)
 
         else:
             results = evaluate.eval_single(
