@@ -659,6 +659,23 @@ files = [
 ]
 
 [[package]]
+name = "starfile"
+version = "0.4.12"
+description = "STAR file reading and writing in python."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "starfile-0.4.12-py3-none-any.whl", hash = "sha256:8cc757fb6ad877d2881adf52b44effd8445dba6dcc8d48ab907ce151231c56b9"},
+    {file = "starfile-0.4.12.tar.gz", hash = "sha256:ea2751b6dbb74ba92c89f75fc8c06dae0f708a1d907e07c2394bc4c54ff7727a"},
+]
+
+[package.dependencies]
+pandas = "*"
+
+[package.extras]
+cli = ["IPython", "click", "matplotlib", "seaborn"]
+
+[[package]]
 name = "tabulate"
 version = "0.9.0"
 description = "Pretty-print tabular data"
@@ -774,4 +791,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, <3.12"
-content-hash = "f94baf8b748346bfbfe517b204fcfa159b5cf2b9e87d754a8199c2ecf6457094"
+content-hash = "f3adf68995a6e92b0c4d5ab403309127886b4e914093adb632ec2b2e0d10f79f"
