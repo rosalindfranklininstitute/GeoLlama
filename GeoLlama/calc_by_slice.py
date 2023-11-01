@@ -46,16 +46,16 @@ def create_slice_views(volume: npt.NDArray[any],
     x_range = (max(0, coords[1]-std_half), min(coords[1]+std_window-std_half, volume.shape[1]-1))
     y_range = (max(0, coords[2]-std_half), min(coords[2]+std_window-std_half, volume.shape[2]-1))
 
-    view_xy = np.std(volume[z_range[0]: z_range[1], :, :], axis=0)
+    # view_xy = np.std(volume[z_range[0]: z_range[1], :, :], axis=0)
     view_zy = np.std(volume[:, x_range[0]: x_range[1], :], axis=1)
     view_zx = np.std(volume[:, :, y_range[0]: y_range[1]], axis=2)
 
     if gaussian_sigma is not None:
-        view_xy = gaussian(view_xy, sigma=gaussian_sigma)
+        # view_xy = gaussian(view_xy, sigma=gaussian_sigma)
         view_zy = gaussian(view_zy, sigma=gaussian_sigma)
         view_zx = gaussian(view_zx, sigma=gaussian_sigma)
 
-    return (view_xy, view_zy, view_zx)
+    return (view_zy, view_zx)
 
 
 def evaluate_slice(slice_coords: list,
@@ -64,7 +64,7 @@ def evaluate_slice(slice_coords: list,
                    use_view: str="YZ",
 ) -> (float, float, float):
 
-    view_xy, view_zy, view_zx = create_slice_views(
+    view_zy, view_zx = create_slice_views(
         volume=volume,
         coords=slice_coords,
         std_window=15,
@@ -118,9 +118,6 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1):
     y_slice_list = np.arange(int(volume.shape[2]*0.2),
                              int(volume.shape[2]*0.85),
                              int(volume.shape[2]*0.05))
-
-    # yz_full_stats = np.empty((len(x_slice_list), 3))
-    # xz_full_stats = np.empty((len(y_slice_list), 3))
 
     # Evaluation along X axis (YZ-slices)
     x_coords = np.empty((len(x_slice_list), 3), dtype=int)
