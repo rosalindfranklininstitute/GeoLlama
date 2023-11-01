@@ -160,7 +160,7 @@ def main(
             if out_csv is not None:
                 raw_df.to_csv(out_csv)
             if out_star is not None:
-                starfile.write(raw_df, out_star)
+                starfile.write(raw_df, out_star, overwrite=True)
 
         else:
             results = evaluate.eval_single(
