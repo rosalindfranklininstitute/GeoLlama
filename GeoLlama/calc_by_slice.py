@@ -35,6 +35,23 @@ from sklearn.decomposition import PCA
 from scipy.stats import mode, chi2
 
 
+def enhance_tanh(volume: npt.NDArray[any],
+) -> npt.NDArray[any]:
+    """
+    Enhances image volume contrast using a modified tanh function
+
+    Args:
+    volume (ndarray) : input 3d image
+
+    Returns:
+    ndarray
+    """
+    max_gv = volume.max()
+    kernel = (volume - 0.5*max_gv) / np.sqrt(max_gv)
+
+    return 0.5 * max_gv * (1 + np.tanh(kernel))
+
+
 def create_slice_views(volume: npt.NDArray[any],
                        coords: list,
                        std_window: int=15,
