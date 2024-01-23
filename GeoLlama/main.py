@@ -114,6 +114,10 @@ def main(
             help="Binning factor for tomogram evaluation.",
             show_default=True,
         ),
+        clahe: typing.Optional[float] = typer.Option(
+            None, "-enh", "--enhance",
+            help="Clipping threshold for CLAHE enhancement."
+        ),
         cpu: int = typer.Option(
             1, "-np", "--num_proc",
             help="Number of CPUs used.",
@@ -150,6 +154,7 @@ def main(
                 filelist=filelist,
                 pixel_size=pixel_size,
                 binning=binning,
+                clahe=clahe,
                 cpu=cpu
             )
             print(tabulate(show_df,
@@ -167,6 +172,7 @@ def main(
                 fname=user_path,
                 pixel_size=pixel_size,
                 binning=binning,
+                clahe=clahe,
                 cpu=cpu
             )
 

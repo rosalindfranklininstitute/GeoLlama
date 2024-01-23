@@ -21,6 +21,7 @@
 
 
 from pathlib import Path
+import typing
 
 import pandas as pd
 
@@ -44,6 +45,7 @@ def eval_single(
         fname: str,
         pixel_size: float,
         binning: int,
+        clahe: typing.Optional[float],
         cpu: int
 ):
     """
@@ -60,6 +62,7 @@ def eval_single(
         volume=tomo,
         pixel_size_nm=pixel_size,
         cpu=cpu,
+        clip_limit=clahe
     )
 
     return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std)
@@ -69,6 +72,7 @@ def eval_batch(
         filelist: list,
         pixel_size: float,
         binning: int,
+        clahe: typing.Optional[float],
         cpu: int,
 ) -> (pd.DataFrame, pd.DataFrame):
     """
@@ -90,12 +94,13 @@ def eval_batch(
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist, total=len(filelist)):
-            print(tomo)
+            # print(tomo)
             _, _, yz_mean, xz_mean, yz_std, xz_std = eval_single(
                 fname=tomo,
                 pixel_size=pixel_size,
                 binning=binning,
                 cpu=cpu,
+                clahe=clahe,
             )
 
             thickness_mean_list.append(yz_mean[1])
@@ -113,12 +118,12 @@ def eval_batch(
 
     raw_data = pd.DataFrame(
         {"filename": [f.name for f in filelist],
-         "Mean thickness (nm)": thickness_mean_list,
-         "Thickness s.d. (nm)": thickness_std_list,
-         "Mean X-tilt (degs)": xtilt_mean_list,
-         "X-tilt s.d. (degs)": xtilt_std_list,
-         "Mean Y-tilt (degs)": ytilt_mean_list,
-         "Y-tilt s.d. (degs)": ytilt_std_list,
+         "Mean_thickness_nm": thickness_mean_list,
+         "Thickness_s.d._nm": thickness_std_list,
+         "Mean_X-tilt_degs": xtilt_mean_list,
+         "X-tilt_s.d._degs": xtilt_std_list,
+         "Mean_Y-tilt_degs": ytilt_mean_list,
+         "Y-tilt_s.d._degs": ytilt_std_list,
         }
     )
 
