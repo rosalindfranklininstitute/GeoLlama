@@ -28,6 +28,8 @@ import numpy.typing as npt
 
 from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
+from skimage.filters import difference_of_gaussians as DoG
+
 from skimage.exposure import equalize_adapthist as CLAHE
 
 from sklearn.cluster import (DBSCAN, OPTICS)
@@ -56,11 +58,31 @@ def enhance_CLAHE(volume: npt.NDArray[any],
     return clahe
 
 
+def filter_bandpass(image: npt.NDArray[any],
+) -> npt.NDArray[any]:
+    """
+    Bandpass filter for image
+
+    Args:
+    image (ndarray) : input image
+
+    Returns:
+    ndarray
+    """
+    filtered_image = DoG(image, min(image.shape)*0.01, max(image.shape)*0.05)
+
+    return filtered_image
+
+
 def create_slice_views(volume: npt.NDArray[any],
                        coords: list,
                        std_window: int=15,
                        gaussian_sigma: int=None,
+                       use_bandpass: bool=True,
 ) -> (npt.NDArray[any], npt.NDArray[any], npt.NDArray[any]):
+
+    if use_bandpass:
+        volume = filter_bandpass(volume)
 
     std_half = std_window // 2
     z_range = (max(0, coords[0]-std_half), min(coords[0]+std_window-std_half, volume.shape[0]-1))
