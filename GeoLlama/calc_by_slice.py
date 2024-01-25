@@ -200,7 +200,7 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
     # Evaluation along Y axis (XZ-slices)
     y_coords = np.empty((len(y_slice_list), 3), dtype=int)
     y_coords[:, 0] = volume.shape[0]//2
-    y_coords[:, 1] = volume.shape[2]//2
+    y_coords[:, 1] = volume.shape[1]//2
     y_coords[:, 2] = y_slice_list
     with mp.Pool(cpu) as p:
         f = partial(evaluate_slice,
