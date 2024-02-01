@@ -23,6 +23,9 @@
 from pathlib import Path
 import typing
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 import pandas as pd
 
 from GeoLlama.prog_bar import (prog_bar, clear_tasks)
@@ -41,12 +44,50 @@ def find_files(path: str) -> list:
     return filelist
 
 
+def save_figure(surface_info, save_path):
+    xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, _, _ = surface_info
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"},
+                           figsize=(10, 10))
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.plot_wireframe(xx_top, yy_top, surface_top, rstride=5, cstride=5)
+    ax.plot_wireframe(xx_bottom, yy_bottom, surface_bottom, rstride=5, cstride=5)
+    ax.view_init(elev=0, azim=-10)
+
+    plt.savefig(save_path)
+    plt.close()
+
+
+def save_text_model(surface_info, save_path, binning):
+    xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, model_top, model_bottom = surface_info
+
+    contour_top = np.full((len(model_top),1), 1, dtype=int)
+    full_list_top = np.hstack(
+        (contour_top, model_top*binning),
+        dtype=object
+    )
+
+    contour_bottom = np.full((len(model_bottom),1), 2, dtype=int)
+    full_list_bottom = np.hstack(
+        (contour_bottom, model_bottom*binning),
+        dtype=object
+    )
+
+    full_contours = np.vstack((full_list_top, full_list_bottom), dtype=object)
+    full_contours[:, 2] += 0.5
+
+    np.savetxt(save_path, full_contours, fmt="%4d %.2f %.2f %.2f")
+
+
 def eval_single(
         fname: str,
         pixel_size: float,
         binning: int,
         clahe: typing.Optional[float],
-        cpu: int
+        cpu: int,
+        bandpass: bool,
 ):
     """
     Some docstring
@@ -58,11 +99,18 @@ def eval_single(
         downscale=binning
     )
 
-    yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std = CBS.evaluate_full_lamella(
-        volume=tomo,
+    yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces = CBS.evaluate_full_lamella(
+        volume=CBS.filter_bandpass(tomo) if bandpass else tomo,
         pixel_size_nm=pixel_size,
         cpu=cpu,
         clip_limit=clahe
+    )
+
+    save_figure(surface_info=surfaces,
+                save_path=f"./surface_models/{fname.stem}.png")
+    save_text_model(surface_info=surfaces,
+                    save_path=f"./surface_models/{fname.stem}.txt",
+                    binning=binning
     )
 
     return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std)
@@ -74,6 +122,7 @@ def eval_batch(
         binning: int,
         clahe: typing.Optional[float],
         cpu: int,
+        bandpass: bool,
 ) -> (pd.DataFrame, pd.DataFrame):
     """
     Some docstring
@@ -94,13 +143,13 @@ def eval_batch(
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist, total=len(filelist)):
-            # print(tomo)
             _, _, yz_mean, xz_mean, yz_std, xz_std = eval_single(
                 fname=tomo,
                 pixel_size=pixel_size,
                 binning=binning,
                 cpu=cpu,
                 clahe=clahe,
+                bandpass=bandpass,
             )
 
             thickness_mean_list.append(yz_mean[1])

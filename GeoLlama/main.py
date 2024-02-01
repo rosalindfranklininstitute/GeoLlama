@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.main  ##
 ## Created            : Neville Yee    ##
 ## Date created       : 03-Oct-2023    ##
-## Date last modified : 05-Oct-2023    ##
+## Date last modified : 25-Jan-2024    ##
 #########################################
 
 import os
@@ -94,12 +94,16 @@ def _check_cli_input(batch: bool,
 @app.command()
 def main(
         gui: bool = typer.Option(
-            True,
+            False,
             help="Use GUI version of GeoLlama.",
         ),
         batch: bool = typer.Option(
-            False,
+            True,
             help="Batch mode of GeoLlama. Finds and evaluates all MRC tomograms in given folder.",
+        ),
+        bandpass: bool = typer.Option(
+            True,
+            help="Apply bandpass filter to tomograms prior to evaluation.",
         ),
         user_path: typing.Optional[str] = typer.Option(
             None, "-p", "--path",
@@ -148,6 +152,9 @@ def main(
             pixel_size=pixel_size
         )
 
+        if not Path("./surface_models").is_dir():
+            Path("surface_models").mkdir()
+
         if batch:
             filelist = evaluate.find_files(path=user_path)
             raw_df, show_df = evaluate.eval_batch(
@@ -155,7 +162,8 @@ def main(
                 pixel_size=pixel_size,
                 binning=binning,
                 clahe=clahe,
-                cpu=cpu
+                cpu=cpu,
+                bandpass=bandpass,
             )
             print(tabulate(show_df,
                            headers="keys",

@@ -36,6 +36,10 @@ from sklearn.cluster import (DBSCAN, OPTICS)
 from sklearn.decomposition import PCA
 
 from scipy.stats import mode, chi2
+import scipy.interpolate as spin
+from icecream import ic
+
+import matplotlib.pyplot as plt
 
 
 def enhance_CLAHE(volume: npt.NDArray[any],
@@ -78,12 +82,7 @@ def create_slice_views(volume: npt.NDArray[any],
                        coords: list,
                        std_window: int=15,
                        gaussian_sigma: int=None,
-                       use_bandpass: bool=True,
 ) -> (npt.NDArray[any], npt.NDArray[any], npt.NDArray[any]):
-
-    if use_bandpass:
-        volume = filter_bandpass(volume)
-
     std_half = std_window // 2
     z_range = (max(0, coords[0]-std_half), min(coords[0]+std_window-std_half, volume.shape[0]-1))
     x_range = (max(0, coords[1]-std_half), min(coords[1]+std_window-std_half, volume.shape[1]-1))
@@ -94,11 +93,40 @@ def create_slice_views(volume: npt.NDArray[any],
     view_zx = np.std(volume[:, :, y_range[0]: y_range[1]], axis=2)
 
     if gaussian_sigma is not None:
-        # view_xy = gaussian(view_xy, sigma=gaussian_sigma)
         view_zy = gaussian(view_zy, sigma=gaussian_sigma)
         view_zx = gaussian(view_zx, sigma=gaussian_sigma)
 
     return (view_zy, view_zx)
+
+
+def interpolate_surface(mesh_points: npt.NDArray[any],
+                        n_points: int=100,
+):
+    """
+    Interpolates surface using mesh points
+
+    Args:
+    mesh_points (ndarray) : input mesh points for reconstructing surface
+    n_points (int) : number of points per dimension for interpolation
+
+    Returns:
+    ndarray
+    """
+    x_mesh = np.linspace(np.min(mesh_points[:,1]),
+                         np.max(mesh_points[:,1]),
+                         n_points)
+    y_mesh = np.linspace(np.min(mesh_points[:,2]),
+                         np.max(mesh_points[:,2]),
+                         n_points)
+    xx, yy = np.meshgrid(x_mesh, y_mesh)
+
+    surface = spin.griddata(mesh_points[:,1:],
+                            mesh_points[:,0],
+                            (xx, yy),
+                            method="linear"
+    )
+
+    return xx, yy, surface
 
 
 def evaluate_slice(slice_coords: list,
@@ -116,17 +144,17 @@ def evaluate_slice(slice_coords: list,
     )
 
     if use_view=="YZ":
-        view = view_zy
+        view = view_zy.T
     elif use_view=="XZ":
-        view = view_zx
+        view = view_zx.T
 
     # Step 1: Greyvalue thresholding with Otsu method
     thres = otsu(view**2) * 1.25
     mask_s1 = np.argwhere(view**2 >= thres)
 
     # Skip slice if no pixels masked
-    if len(mask_s1) < pt_thres:
-        return (0,)*4
+    # if len(mask_s1) < pt_thres:
+    #     return
     centroid_s1 = mask_s1.mean(axis=0)
 
     # Step 2: Use Mahalanobis distance to remove potential outliers
@@ -137,8 +165,8 @@ def evaluate_slice(slice_coords: list,
     mask_s2 = np.delete(mask_s1, np.argwhere(p_val<0.08), axis=0)
 
     # Skip slice if no pixels masked
-    if len(mask_s2) < pt_thres:
-        return (0,)*4
+    # if len(mask_s2) < pt_thres:
+    #     return
 
     # Step 3: Use distance-based clustering to find sample region
     clusters = DBSCAN(eps=15, min_samples=15).fit_predict(mask_s2)
@@ -146,8 +174,8 @@ def evaluate_slice(slice_coords: list,
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
     # Skip slice if no pixels masked
-    if len(mask_s3) < pt_thres:
-        return (0,)*4
+    # if len(mask_s3) < pt_thres:
+    #     return
     centroid_s3 = mask_s3.mean(axis=0)
 
     # Step 4: Use PCA to find best rectangle fits
@@ -155,17 +183,75 @@ def evaluate_slice(slice_coords: list,
     pca.fit(mask_s3)
     eigenvecs = pca.components_
     eigenvals = np.sqrt(pca.explained_variance_)
-    rectangle_dims = eigenvals * 4      # 4 times SD to cover nearly all points
+    rectangle_dims = eigenvals * 3.5      # 3.5 times SD to cover nearly all points
 
+    if eigenvecs[0,1] < 0:
+        eigenvecs[0] *= -1
     if eigenvecs[1,0] < 0:
         eigenvecs[1] *= -1
+
     angle = np.rad2deg(np.arctan2(-eigenvecs[np.argmin(eigenvals), 1],
                                   eigenvecs[np.argmin(eigenvals), 0]))
 
     slice_breadth, slice_thickness = rectangle_dims * pixel_size_nm
     num_points = len(mask_s3)
 
-    return (slice_breadth, slice_thickness, angle, num_points)
+    cell_vecs = eigenvecs * rectangle_dims.reshape((2, 1))
+
+    # Centralise lamella centroid to middle of slice along long axis
+    lamella_centre = centroid_s3 + eigenvecs[0] * (view.shape[0]*0.5-centroid_s3[0]) / eigenvecs[0,0]
+
+    extrema = np.array(view.shape) - 1
+    slope = eigenvecs[1,0] / eigenvecs[1,1]
+    ref_pt1 = lamella_centre + cell_vecs[1]
+    ref_pt2 = lamella_centre - cell_vecs[1]
+
+    top_pt1 = lamella_centre + cell_vecs[1] + cell_vecs[0]
+    top_pt2 = lamella_centre + cell_vecs[1] - cell_vecs[0]
+    bottom_pt1 = lamella_centre - cell_vecs[1] + cell_vecs[0]
+    bottom_pt2 = lamella_centre - cell_vecs[1] - cell_vecs[0]
+
+    if use_view == "YZ":
+        surface_top = np.array([
+            [top_pt1[0],
+             slice_coords[1],
+             top_pt1[1]],
+            [top_pt2[0],
+             slice_coords[1],
+             top_pt2[1]],
+        ])
+        surface_bottom = np.array([
+            [bottom_pt1[0],
+             slice_coords[1],
+             bottom_pt1[1]],
+            [bottom_pt2[0],
+             slice_coords[1],
+             bottom_pt2[1]],
+        ])
+
+    if use_view == "XZ":
+        surface_top = np.array([
+            [top_pt1[0],
+             top_pt1[1],
+             slice_coords[2],
+            ],
+            [top_pt2[0],
+             top_pt2[1],
+             slice_coords[2],
+            ],
+        ])
+        surface_bottom = np.array([
+            [bottom_pt1[0],
+             bottom_pt1[1],
+             slice_coords[2],
+            ],
+            [bottom_pt2[0],
+             bottom_pt2[1],
+             slice_coords[2],
+            ],
+        ])
+
+    return (slice_breadth, slice_thickness, angle, num_points, surface_top, surface_bottom)
 
 
 def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
@@ -174,12 +260,12 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
                                clip_limit=clip_limit,
         )
 
-    x_slice_list = np.arange(int(volume.shape[1]*0.),
-                             int(volume.shape[1]*1.),
-                             int(volume.shape[1]*0.025))
-    y_slice_list = np.arange(int(volume.shape[2]*0.),
-                             int(volume.shape[2]*1.),
-                             int(volume.shape[2]*0.025))
+    x_slice_list = np.arange(int(volume.shape[1]*0.2),
+                             int(volume.shape[1]*0.8),
+                             int(volume.shape[1]*0.02))
+    y_slice_list = np.arange(int(volume.shape[2]*0.2),
+                             int(volume.shape[2]*0.8),
+                             int(volume.shape[2]*0.02))
 
     # Evaluation along X axis (YZ-slices)
     x_coords = np.empty((len(x_slice_list), 3), dtype=int)
@@ -191,7 +277,12 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
                     volume=volume,
                     pixel_size_nm=pixel_size_nm,
                     use_view="YZ")
-        yz_full_stats = np.array(p.map(f, x_coords))
+        yz_output = np.array(p.map(f, x_coords), dtype=object)
+
+    yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//6, 6))
+    yz_full_stats = np.array(yz_output[:, :4], dtype=float)
+    yz_surface_top = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output)*2, 3)
+    yz_surface_bottom = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output)*2, 3)
 
     yz_remove_empty = np.array([s for s in yz_full_stats if s[3]>0])
     yz_thres = otsu(yz_remove_empty[:, 3])
@@ -207,18 +298,33 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
                     volume=volume,
                     pixel_size_nm=pixel_size_nm,
                     use_view="XZ")
-        xz_full_stats = np.array(p.map(f, y_coords))
+        xz_output = np.array(p.map(f, y_coords), dtype=object)
+
+    xz_full_stats = np.array(xz_output[:, :4], dtype=float)
+    xz_surface_top = np.concatenate(xz_output[:,4]).ravel().reshape(len(xz_output)*2, 3)
+    xz_surface_bottom = np.concatenate(xz_output[:,5]).ravel().reshape(len(xz_output)*2, 3)
 
     xz_remove_empty = np.array([s for s in xz_full_stats if s[3]>0])
     xz_thres = otsu(xz_remove_empty[:, 3])
     xz_full_stats_refined = np.array([s for s in xz_remove_empty if s[3]>xz_thres])
 
     # Stat aggregation
+    surface_mesh_top = np.vstack((yz_surface_top, xz_surface_top))
+    surface_mesh_bottom = np.vstack((yz_surface_bottom, xz_surface_bottom))
     yz_mean = yz_full_stats_refined.mean(axis=0)
     xz_mean = xz_full_stats_refined.mean(axis=0)
     yz_std = yz_full_stats_refined.std(axis=0)
     xz_std = xz_full_stats_refined.std(axis=0)
 
+    xx_top, yy_top, surface_interp_top = interpolate_surface(yz_surface_top)
+    xx_bottom, yy_bottom, surface_interp_bottom = interpolate_surface(yz_surface_bottom)
+    surfaces = (xx_top, yy_top, surface_interp_top,
+                xx_bottom, yy_bottom, surface_interp_bottom,
+                yz_surface_top, yz_surface_bottom
+    )
+
     return (yz_full_stats, xz_full_stats,
             yz_mean, xz_mean,
-            yz_std, xz_std)
+            yz_std, xz_std,
+            surfaces
+    )
