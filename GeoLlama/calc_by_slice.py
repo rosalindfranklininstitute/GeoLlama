@@ -120,11 +120,8 @@ def interpolate_surface(mesh_points: npt.NDArray[any],
                          n_points)
     xx, yy = np.meshgrid(x_mesh, y_mesh)
 
-    surface = spin.griddata(mesh_points[:,1:],
-                            mesh_points[:,0],
-                            (xx, yy),
-                            method="linear"
-    )
+    interp = spin.LinearNDInterpolator(mesh_points[:, 1:], mesh_points[:, 0])
+    surface = interp(xx, yy)
 
     return xx, yy, surface
 
@@ -155,6 +152,7 @@ def evaluate_slice(slice_coords: list,
     # Skip slice if no pixels masked
     # if len(mask_s1) < pt_thres:
     #     return
+    # centroid_s1 = 0.5*(mask_s1.max(axis=0) + mask_s1.min(axis=0))
     centroid_s1 = mask_s1.mean(axis=0)
 
     # Step 2: Use Mahalanobis distance to remove potential outliers
@@ -162,7 +160,7 @@ def evaluate_slice(slice_coords: list,
     pts_deviation = mask_s1 - centroid_s1
     maha_dist = np.dot(np.dot(pts_deviation, covar_inv), pts_deviation.T).diagonal()
     p_val = 1 - chi2.cdf(np.sqrt(maha_dist), 1)
-    mask_s2 = np.delete(mask_s1, np.argwhere(p_val<0.08), axis=0)
+    mask_s2 = np.delete(mask_s1, np.argwhere(p_val<0.07), axis=0)
 
     # Skip slice if no pixels masked
     # if len(mask_s2) < pt_thres:
@@ -176,6 +174,7 @@ def evaluate_slice(slice_coords: list,
     # Skip slice if no pixels masked
     # if len(mask_s3) < pt_thres:
     #     return
+    # centroid_s3 = 0.5*(mask_s3.max(axis=0) + mask_s3.min(axis=0))
     centroid_s3 = mask_s3.mean(axis=0)
 
     # Step 4: Use PCA to find best rectangle fits
@@ -183,7 +182,7 @@ def evaluate_slice(slice_coords: list,
     pca.fit(mask_s3)
     eigenvecs = pca.components_
     eigenvals = np.sqrt(pca.explained_variance_)
-    rectangle_dims = eigenvals * 3.5      # 3.5 times SD to cover nearly all points
+    rectangle_dims = eigenvals * 2.5      # 3 times SD to cover nearly all points
 
     if eigenvecs[0,1] < 0:
         eigenvecs[0] *= -1
@@ -193,16 +192,15 @@ def evaluate_slice(slice_coords: list,
     angle = np.rad2deg(np.arctan2(-eigenvecs[np.argmin(eigenvals), 1],
                                   eigenvecs[np.argmin(eigenvals), 0]))
 
-    slice_breadth, slice_thickness = rectangle_dims * pixel_size_nm
+    slice_breadth, slice_thickness = 2 * rectangle_dims * pixel_size_nm
     num_points = len(mask_s3)
 
     cell_vecs = eigenvecs * rectangle_dims.reshape((2, 1))
 
     # Centralise lamella centroid to middle of slice along long axis
-    lamella_centre = centroid_s3 + eigenvecs[0] * (view.shape[0]*0.5-centroid_s3[0]) / eigenvecs[0,0]
+    lamella_centre = centroid_s3
 
     extrema = np.array(view.shape) - 1
-    slope = eigenvecs[1,0] / eigenvecs[1,1]
     ref_pt1 = lamella_centre + cell_vecs[1]
     ref_pt2 = lamella_centre - cell_vecs[1]
 
@@ -262,10 +260,10 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
 
     x_slice_list = np.arange(int(volume.shape[1]*0.2),
                              int(volume.shape[1]*0.8),
-                             int(volume.shape[1]*0.02))
+                             int(volume.shape[1]*0.025))
     y_slice_list = np.arange(int(volume.shape[2]*0.2),
                              int(volume.shape[2]*0.8),
-                             int(volume.shape[2]*0.02))
+                             int(volume.shape[2]*0.025))
 
     # Evaluation along X axis (YZ-slices)
     x_coords = np.empty((len(x_slice_list), 3), dtype=int)
