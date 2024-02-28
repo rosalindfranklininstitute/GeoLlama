@@ -24,6 +24,7 @@ from pathlib import Path
 import typing
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 import pandas as pd
@@ -31,6 +32,8 @@ import pandas as pd
 from GeoLlama.prog_bar import (prog_bar, clear_tasks)
 from GeoLlama import io
 from GeoLlama import calc_by_slice as CBS
+
+mpl.use("Agg")
 
 
 def find_files(path: str) -> list:
@@ -44,7 +47,7 @@ def find_files(path: str) -> list:
     return filelist
 
 
-def save_figure(surface_info, save_path):
+def save_figure(surface_info, save_path, binning):
     xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, _, _ = surface_info
 
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"},
@@ -52,9 +55,17 @@ def save_figure(surface_info, save_path):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
-    ax.plot_wireframe(xx_top, yy_top, surface_top, rstride=5, cstride=5)
-    ax.plot_wireframe(xx_bottom, yy_bottom, surface_bottom, rstride=5, cstride=5)
-    ax.view_init(elev=0, azim=-10)
+    ax.plot_surface(
+        surface_top*binning,
+        xx_top*binning,
+        yy_top*binning,
+        rstride=5, cstride=5)
+    ax.plot_surface(
+        surface_bottom*binning,
+        xx_bottom*binning,
+        yy_bottom*binning,
+        rstride=5, cstride=5, color="r")
+    ax.view_init(elev=0, azim=80)
 
     plt.savefig(save_path)
     plt.close()
@@ -107,7 +118,9 @@ def eval_single(
     )
 
     save_figure(surface_info=surfaces,
-                save_path=f"./surface_models/{fname.stem}.png")
+                save_path=f"./surface_models/{fname.stem}.png",
+                binning=binning
+    )
     save_text_model(surface_info=surfaces,
                     save_path=f"./surface_models/{fname.stem}.txt",
                     binning=binning
@@ -165,6 +178,19 @@ def eval_batch(
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_std_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_std_list[idx]:.2f}")
 
+    # Detect anomalies
+    thick_std_percent = np.array(thickness_std_list) / np.array(thickness_mean_list)
+    xtilt_mean_of_mean = np.array(xtilt_mean_list).mean()
+    xtilt_mean_std = np.std(np.array(xtilt_mean_list))
+    xtilt_accept_range = [xtilt_mean_of_mean-3*xtilt_mean_std,
+                          xtilt_mean_of_mean+3*xtilt_mean_std]
+    xtilt_std_percent = np.array(xtilt_std_list) / np.abs(np.array(xtilt_mean_list))
+
+    thick_anomaly = thick_std_percent > 0.1
+    xtilt_anomaly = \
+        (not xtilt_accept_range[0] <= np.array(xtilt_mean_of_mean) <= xtilt_accept_range[1]) or \
+        xtilt_std_percent > 0.1
+
     raw_data = pd.DataFrame(
         {"filename": [f.name for f in filelist],
          "Mean_thickness_nm": thickness_mean_list,
@@ -173,6 +199,8 @@ def eval_batch(
          "X-tilt_s.d._degs": xtilt_std_list,
          "Mean_Y-tilt_degs": ytilt_mean_list,
          "Y-tilt_s.d._degs": ytilt_std_list,
+         "thickness_anomaly": thick_anomaly,
+         "xtilt_anomaly": xtilt_anomaly,
         }
     )
 
@@ -181,6 +209,8 @@ def eval_batch(
          "Thickness (nm)": thickness_list,
          "X-tilt (degs)": xtilt_list,
          "Y-tilt (degs)": ytilt_list,
+         "thickness_anomaly": thick_anomaly,
+         "xtilt_anomaly": xtilt_anomaly,
         }
     )
 
