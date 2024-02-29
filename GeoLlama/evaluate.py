@@ -96,9 +96,9 @@ def eval_single(
         fname: str,
         pixel_size: float,
         binning: int,
-        clahe: typing.Optional[float],
         cpu: int,
         bandpass: bool,
+        autocontrast: bool,
 ):
     """
     Some docstring

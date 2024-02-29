@@ -30,8 +30,6 @@ from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
 from skimage.filters import difference_of_gaussians as DoG
 
-from skimage.exposure import equalize_adapthist as CLAHE
-
 from sklearn.cluster import (DBSCAN, OPTICS)
 from sklearn.decomposition import PCA
 
@@ -40,26 +38,6 @@ import scipy.interpolate as spin
 from icecream import ic
 
 import matplotlib.pyplot as plt
-
-
-def enhance_CLAHE(volume: npt.NDArray[any],
-                  clip_limit: float=0.5,
-) -> npt.NDArray[any]:
-    """
-    Enhances image volume contrast using a scikit-image's CLAHE implementation
-
-    Args:
-    volume (ndarray) : input 3d image
-
-    Returns:
-    ndarray
-    """
-    volume_norm = (volume - volume.min()) / volume.ptp()
-    clahe = CLAHE(volume_norm,
-                  clip_limit=clip_limit
-    )
-
-    return clahe
 
 
 def filter_bandpass(image: npt.NDArray[any],
@@ -76,6 +54,32 @@ def filter_bandpass(image: npt.NDArray[any],
     filtered_image = DoG(image, min(image.shape)*0.01, max(image.shape)*0.05)
 
     return filtered_image
+
+
+def autocontrast_slice(image: npt.NDArray[any],
+                       target_mean: float=150,
+                       target_std: float=40,
+                       clip_cutoff: float=3,
+) -> npt.NDArray[any]:
+    """
+    Auto-contrast image slice by clipping and histogram stretching
+
+    Args:
+    image (ndarray) : input image
+    target_mean (float) : mean grayvalue of the output image
+    target_std (float) : standard deviation of grayvalue of the output image
+    clip_cutoff (float) : number of SDs to clip before histogram stretching
+
+    Returns:
+    ndarray
+    """
+    modified_z_score = (image - np.mean(image)) / (np.std(image) * clip_cutoff)
+    z_clipped = np.clip(modified_z_score, -1, 1)
+    z_clipped_std = np.std(z_clipped)
+
+    img_corrected = z_clipped * target_std / z_clipped_std + target_mean
+
+    return img_corrected
 
 
 def create_slice_views(volume: npt.NDArray[any],
@@ -131,6 +135,7 @@ def evaluate_slice(slice_coords: list,
                    pixel_size_nm: float,
                    use_view: str="YZ",
                    pt_thres: int=100,
+                   autocontrast: bool=True,
 ) -> (float, float, float):
 
     view_zy, view_zx = create_slice_views(
@@ -144,6 +149,9 @@ def evaluate_slice(slice_coords: list,
         view = view_zy.T
     elif use_view=="XZ":
         view = view_zx.T
+
+    if autocontrast:
+        view = autocontrast_slice(view)
 
     # Step 1: Greyvalue thresholding with Otsu method
     thres = otsu(view**2) * 1.25
@@ -252,12 +260,11 @@ def evaluate_slice(slice_coords: list,
     return (slice_breadth, slice_thickness, angle, num_points, surface_top, surface_bottom)
 
 
-def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
-    if clip_limit is not None:
-        volume = enhance_CLAHE(volume,
-                               clip_limit=clip_limit,
-        )
-
+def evaluate_full_lamella(volume,
+                          pixel_size_nm,
+                          autocontrast,
+                          cpu=1,
+):
     x_slice_list = np.arange(int(volume.shape[1]*0.2),
                              int(volume.shape[1]*0.8),
                              int(volume.shape[1]*0.025))
@@ -274,7 +281,9 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
         f = partial(evaluate_slice,
                     volume=volume,
                     pixel_size_nm=pixel_size_nm,
-                    use_view="YZ")
+                    autocontrast=autocontrast,
+                    use_view="YZ"
+        )
         yz_output = np.array(p.map(f, x_coords), dtype=object)
 
     yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//6, 6))
@@ -295,7 +304,9 @@ def evaluate_full_lamella(volume, pixel_size_nm, cpu=1, clip_limit=None):
         f = partial(evaluate_slice,
                     volume=volume,
                     pixel_size_nm=pixel_size_nm,
-                    use_view="XZ")
+                    autocontrast=autocontrast,
+                    use_view="XZ"
+        )
         xz_output = np.array(p.map(f, y_coords), dtype=object)
 
     xz_full_stats = np.array(xz_output[:, :4], dtype=float)

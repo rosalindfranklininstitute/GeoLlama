@@ -101,8 +101,12 @@ def main(
             True,
             help="Batch mode of GeoLlama. Finds and evaluates all MRC tomograms in given folder.",
         ),
+        autocontrast: bool = typer.Option(
+            False,
+            help="Apply autocontrast to slices prior to evaluation.",
+        ),
         bandpass: bool = typer.Option(
-            True,
+            False,
             help="Apply bandpass filter to tomograms prior to evaluation.",
         ),
         user_path: typing.Optional[str] = typer.Option(
@@ -117,10 +121,6 @@ def main(
             1, "-b", "--bin",
             help="Binning factor for tomogram evaluation.",
             show_default=True,
-        ),
-        clahe: typing.Optional[float] = typer.Option(
-            None, "-enh", "--enhance",
-            help="Clipping threshold for CLAHE enhancement."
         ),
         cpu: int = typer.Option(
             1, "-np", "--num_proc",
@@ -161,9 +161,9 @@ def main(
                 filelist=filelist,
                 pixel_size=pixel_size,
                 binning=binning,
-                clahe=clahe,
                 cpu=cpu,
                 bandpass=bandpass,
+                autocontrast=autocontrast,
             )
             print(tabulate(show_df,
                            headers="keys",
@@ -180,8 +180,8 @@ def main(
                 fname=user_path,
                 pixel_size=pixel_size,
                 binning=binning,
-                clahe=clahe,
-                cpu=cpu
+                cpu=cpu,
+                autocontrast=autocontrast
             )
 
             yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std = results
