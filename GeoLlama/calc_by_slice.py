@@ -93,8 +93,8 @@ def create_slice_views(volume: npt.NDArray[any],
     y_range = (max(0, coords[2]-std_half), min(coords[2]+std_window-std_half, volume.shape[2]-1))
 
     # view_xy = np.std(volume[z_range[0]: z_range[1], :, :], axis=0)
-    view_zy = np.std(volume[:, x_range[0]: x_range[1], :], axis=1)
-    view_zx = np.std(volume[:, :, y_range[0]: y_range[1]], axis=2)
+    view_zy = np.std(volume[:, x_range[0]: x_range[1], :], axis=1) * np.sum(volume[:, x_range[0]: x_range[1], :], axis=1)
+    view_zx = np.std(volume[:, :, y_range[0]: y_range[1]], axis=2) * np.sum(volume[:, :, y_range[0]: y_range[1]], axis=2)
 
     if gaussian_sigma is not None:
         view_zy = gaussian(view_zy, sigma=gaussian_sigma)
@@ -130,6 +130,37 @@ def interpolate_surface(mesh_points: npt.NDArray[any],
     return xx, yy, surface
 
 
+def contour_refine(contour_pts: npt.NDArray[any],
+) -> npt.NDArray:
+    """
+    some docstring
+    """
+    contour_pts_mean = contour_pts.mean(axis=0)
+
+    pca = PCA(n_components=1)
+    pca.fit(contour_pts)
+    dir_vec = pca.components_
+
+    distance = np.linalg.norm(
+        np.cross(contour_pts-contour_pts_mean, dir_vec),
+        axis=1
+    )
+
+    # thres = distance.mean() + 3 * np.std(distance)
+    # del_args = np.argwhere(distance > thres).flatten()
+
+    dist_std_LOO = np.empty((len(contour_pts)))
+    for i in range(len(contour_pts)):
+        temp = np.delete(contour_pts, i, axis=0)
+        dist_std_LOO[i] = np.std(temp)
+
+    print(dist_std_LOO)
+
+    out = np.delete(contour_pts, del_args, axis=0)
+
+    return out, del_args
+
+
 def evaluate_slice(slice_coords: list,
                    volume: npt.NDArray[any],
                    pixel_size_nm: float,
@@ -141,7 +172,7 @@ def evaluate_slice(slice_coords: list,
     view_zy, view_zx = create_slice_views(
         volume=volume,
         coords=slice_coords,
-        std_window=15,
+        std_window=5,
         gaussian_sigma=3
     )
 
@@ -291,6 +322,11 @@ def evaluate_full_lamella(volume,
     yz_surface_top = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output)*2, 3)
     yz_surface_bottom = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output)*2, 3)
 
+    yz_top_contour_1, exc_top1 = contour_refine(yz_surface_top[::2])
+    yz_top_contour_2, exc_top2 = contour_refine(yz_surface_top[1::2])
+    yz_bottom_contour_1, exc_bottom1 = contour_refine(yz_surface_bottom[::2])
+    yz_bottom_contour_2, exc_bottom2 = contour_refine(yz_surface_bottom[1::2])
+
     yz_remove_empty = np.array([s for s in yz_full_stats if s[3]>0])
     yz_thres = otsu(yz_remove_empty[:, 3])
     yz_full_stats_refined = np.array([s for s in yz_remove_empty if s[3]>yz_thres])
@@ -325,8 +361,14 @@ def evaluate_full_lamella(volume,
     yz_std = yz_full_stats_refined.std(axis=0)
     xz_std = xz_full_stats_refined.std(axis=0)
 
-    xx_top, yy_top, surface_interp_top = interpolate_surface(yz_surface_top)
-    xx_bottom, yy_bottom, surface_interp_bottom = interpolate_surface(yz_surface_bottom)
+    xx_top, yy_top, surface_interp_top = interpolate_surface(
+        np.vstack((yz_top_contour_1, yz_top_contour_2))
+    )
+
+    xx_bottom, yy_bottom, surface_interp_bottom = interpolate_surface(
+        np.vstack((yz_bottom_contour_1, yz_bottom_contour_2))
+    )
+
     surfaces = (xx_top, yy_top, surface_interp_top,
                 xx_bottom, yy_bottom, surface_interp_bottom,
                 yz_surface_top, yz_surface_bottom
