@@ -114,7 +114,7 @@ def eval_single(
         volume=CBS.filter_bandpass(tomo) if bandpass else tomo,
         pixel_size_nm=pixel_size,
         cpu=cpu,
-        clip_limit=clahe
+        autocontrast=autocontrast,
     )
 
     save_figure(surface_info=surfaces,
@@ -133,9 +133,9 @@ def eval_batch(
         filelist: list,
         pixel_size: float,
         binning: int,
-        clahe: typing.Optional[float],
         cpu: int,
         bandpass: bool,
+        autocontrast: bool,
 ) -> (pd.DataFrame, pd.DataFrame):
     """
     Some docstring
@@ -161,8 +161,8 @@ def eval_batch(
                 pixel_size=pixel_size,
                 binning=binning,
                 cpu=cpu,
-                clahe=clahe,
                 bandpass=bandpass,
+                autocontrast=autocontrast,
             )
 
             thickness_mean_list.append(yz_mean[1])
