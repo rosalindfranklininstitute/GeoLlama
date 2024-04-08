@@ -35,7 +35,7 @@ def read_mrc(fname: str,
         data = f.data
 
     if downscale > 1:
-        data_ds = DSLM(data, (downscale,)*3)
+        data_ds = DSLM(data, (downscale, downscale, downscale))
         return (data_ds, px_size_nm*downscale)
 
     return (data, px_size_nm)
