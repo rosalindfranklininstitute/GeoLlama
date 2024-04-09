@@ -19,6 +19,7 @@
 ## Date last modified : 09-Oct-2023             ##
 ##################################################
 
+import itertools
 from functools import partial
 from pprint import pprint
 import multiprocessing as mp
@@ -161,6 +162,98 @@ def contour_refine(contour_pts: npt.NDArray[any],
     return out, del_args
 
 
+def generalised_theil_sen_fit(contour_pts: npt.NDArray[any],
+) -> (npt.NDArray, npt.NDArray, float):
+    """
+    Linear fitting of 3D points using a generalised Theil-Sen algorithm
+
+    Args:
+    contour_pts (ndarray) : contour points in 3D space for fitting
+
+    Returns:
+    ndarray, ndarray, float
+    """
+    # Estimate gradient of fitted line
+    point_pairs = np.array(list(itertools.combinations(contour_pts, 2)))
+    grad_vectors = np.array([p[1]-p[0] for p in point_pairs])
+    grad_median = np.median(grad_vectors, axis=0)
+    grad_norm = grad_median / np.linalg.norm(grad_median)
+
+    # Estimate offset of fitted line using median of point-to-line vectors
+    ptl_vectors = contour_pts - np.dot(contour_pts, grad_norm)[..., np.newaxis] * grad_norm
+    ptl_median = np.median(ptl_vectors, axis=0)
+
+    # Final fit + mean-squared error calculation
+    fitted_ptl_vectors = (contour_pts-ptl_median) - np.dot(contour_pts-ptl_median, grad_norm)[..., np.newaxis] * grad_norm
+    mse = np.mean(np.linalg.norm(fitted_ptl_vectors, axis=0)**2)
+
+    return (grad_norm, ptl_median, mse)
+
+
+def leave_one_out(contour_pts: npt.NDArray[any],
+                  thres: float=0.1,
+) -> int | None:
+    """
+    Get  worst outlier point using leave-one-out (LOO) algorithm
+
+    Args:
+    contour_pts (ndarray) : Input ensemble for outlier detection
+    thres (float) : Threshold MSE change for outlier detection
+
+    Returns:
+    int | None
+    """
+    mse_perc_change = np.empty(len(contour_pts))
+
+    # Initial fit
+    grad_0, passing_0, mse_0 = generalised_theil_sen_fit(contour_pts)
+
+    # Leave-one-out algorithm
+    for idx, points in enumerate(contour_pts):
+        temp = np.delete(contour_pts, idx, axis=0)
+        grad, passing, mse = generalised_theil_sen_fit(temp)
+        mse_perc_change[idx] = (mse-mse_0) / mse_0
+
+    # Determine whether worst point is an outlier using given threshold
+    # If the point is an outlier, determine its index
+    if mse_perc_change.min() < -thres:
+        points_out = np.delete(contour_pts, np.argmin(mse_perc_change), axis=0)
+        return np.argmin(mse_perc_change)
+
+    return None
+
+
+def refine_contour_LOO(contour_pts: npt.NDArray[any],
+                       max_delete_perc: float=15.,
+                       thres: float=0.1,
+) -> npt.NDArray:
+    """
+    Iteratively remove outliers using LOO algorithm
+
+    Args:
+    contour_pts (ndarray) : Input ensemble of contour points for refinement
+    max_delete_percentage (float) : Maximum percentage of slices allowed to be removed
+    thres (float) : Threshold MSE change for outlier detection
+
+    Returns:
+    np.ndarray
+    """
+    max_iter = int(len(contour_pts) * max_delete_perc * 0.01)
+    slice_list = [i for i in range(len(contour_pts))]
+    remove_list = []
+
+    temp = np.copy(contour_pts)
+    for curr_iter in range(max_iter):
+        remove_idx = leave_one_out(temp, thres=thres)
+        if remove_idx is None:
+            return remove_list
+
+        remove_list.append(slice_list.pop(remove_idx))
+        temp = np.delete(temp, remove_idx, axis=0)
+
+    return remove_list
+
+
 def evaluate_slice(slice_coords: list,
                    volume: npt.NDArray[any],
                    pixel_size_nm: float,
@@ -249,46 +342,55 @@ def evaluate_slice(slice_coords: list,
     bottom_pt2 = lamella_centre - cell_vecs[1] - cell_vecs[0]
 
     if use_view == "YZ":
-        surface_top = np.array([
+        surface_top_1 = np.array(
             [top_pt1[0],
              slice_coords[1],
              top_pt1[1]],
+        )
+        surface_top_2 = np.array(
             [top_pt2[0],
              slice_coords[1],
              top_pt2[1]],
-        ])
-        surface_bottom = np.array([
+        )
+        surface_bottom_1 = np.array(
             [bottom_pt1[0],
              slice_coords[1],
-             bottom_pt1[1]],
+             bottom_pt1[1]]
+        )
+        surface_bottom_2 = np.array(
             [bottom_pt2[0],
              slice_coords[1],
              bottom_pt2[1]],
-        ])
+        )
 
     if use_view == "XZ":
-        surface_top = np.array([
+        surface_top_1 = np.array(
             [top_pt1[0],
              top_pt1[1],
              slice_coords[2],
-            ],
+            ]
+        )
+        surface_top_2 = np.array(
             [top_pt2[0],
              top_pt2[1],
              slice_coords[2],
             ],
-        ])
-        surface_bottom = np.array([
+        )
+        surface_bottom_1 = np.array(
             [bottom_pt1[0],
              bottom_pt1[1],
              slice_coords[2],
-            ],
+            ]
+        )
+        surface_bottom_2 = np.array(
             [bottom_pt2[0],
              bottom_pt2[1],
              slice_coords[2],
             ],
-        ])
-
-    return (slice_breadth, slice_thickness, angle, num_points, surface_top, surface_bottom)
+        )
+    return (slice_breadth, slice_thickness, angle, num_points,
+            surface_top_1, surface_top_2,
+            surface_bottom_1, surface_bottom_2)
 
 
 def evaluate_full_lamella(volume,
@@ -317,19 +419,32 @@ def evaluate_full_lamella(volume,
         )
         yz_output = np.array(p.map(f, x_coords), dtype=object)
 
-    yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//6, 6))
+    yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//8, 8))
     yz_full_stats = np.array(yz_output[:, :4], dtype=float)
-    yz_surface_top = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output)*2, 3)
-    yz_surface_bottom = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output)*2, 3)
+    yz_surface_top_1 = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output), 3)
+    yz_surface_top_2 = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output), 3)
+    yz_surface_bottom_1 = np.concatenate(yz_output[:,6]).ravel().reshape(len(yz_output), 3)
+    yz_surface_bottom_2 = np.concatenate(yz_output[:,7]).ravel().reshape(len(yz_output), 3)
 
-    yz_top_contour_1, exc_top1 = contour_refine(yz_surface_top[::2])
-    yz_top_contour_2, exc_top2 = contour_refine(yz_surface_top[1::2])
-    yz_bottom_contour_1, exc_bottom1 = contour_refine(yz_surface_bottom[::2])
-    yz_bottom_contour_2, exc_bottom2 = contour_refine(yz_surface_bottom[1::2])
+    yz_surface_top = np.concatenate((yz_surface_top_1, yz_surface_top_2))
+    yz_surface_bottom = np.concatenate((yz_surface_bottom_1, yz_surface_bottom_2))
 
-    yz_remove_empty = np.array([s for s in yz_full_stats if s[3]>0])
-    yz_thres = otsu(yz_remove_empty[:, 3])
-    yz_full_stats_refined = np.array([s for s in yz_remove_empty if s[3]>yz_thres])
+    # Refine measurements
+    t1 = refine_contour_LOO(yz_surface_top_1)
+    t2 = refine_contour_LOO(yz_surface_top_2)
+    b1 = refine_contour_LOO(yz_surface_bottom_1)
+    b2 = refine_contour_LOO(yz_surface_bottom_2)
+
+    removed_slices = list(set(t1 + t2 + b1 + b2))
+    yz_full_stats_refined = np.delete(yz_full_stats, removed_slices, axis=0)
+    yz_top_contour_1 = np.delete(yz_surface_top_1, removed_slices, axis=0)
+    yz_top_contour_2 = np.delete(yz_surface_top_2, removed_slices, axis=0)
+    yz_bottom_contour_1 = np.delete(yz_surface_bottom_1, removed_slices, axis=0)
+    yz_bottom_contour_2 = np.delete(yz_surface_bottom_2, removed_slices, axis=0)
+
+    # yz_remove_empty = np.array([s for s in yz_full_stats if s[3]>0])
+    # yz_thres = otsu(yz_remove_empty[:, 3])
+    # yz_full_stats_refined = np.array([s for s in yz_remove_empty if s[3]>yz_thres])
 
     # Evaluation along Y axis (XZ-slices)
     y_coords = np.empty((len(y_slice_list), 3), dtype=int)
@@ -346,16 +461,12 @@ def evaluate_full_lamella(volume,
         xz_output = np.array(p.map(f, y_coords), dtype=object)
 
     xz_full_stats = np.array(xz_output[:, :4], dtype=float)
-    xz_surface_top = np.concatenate(xz_output[:,4]).ravel().reshape(len(xz_output)*2, 3)
-    xz_surface_bottom = np.concatenate(xz_output[:,5]).ravel().reshape(len(xz_output)*2, 3)
 
     xz_remove_empty = np.array([s for s in xz_full_stats if s[3]>0])
     xz_thres = otsu(xz_remove_empty[:, 3])
     xz_full_stats_refined = np.array([s for s in xz_remove_empty if s[3]>xz_thres])
 
     # Stat aggregation
-    surface_mesh_top = np.vstack((yz_surface_top, xz_surface_top))
-    surface_mesh_bottom = np.vstack((yz_surface_bottom, xz_surface_bottom))
     yz_mean = yz_full_stats_refined.mean(axis=0)
     xz_mean = xz_full_stats_refined.mean(axis=0)
     yz_std = yz_full_stats_refined.std(axis=0)
