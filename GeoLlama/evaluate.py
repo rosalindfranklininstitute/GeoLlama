@@ -126,7 +126,7 @@ def eval_single(
                     binning=binning
     )
 
-    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std)
+    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces)
 
 
 def eval_batch(
@@ -156,7 +156,7 @@ def eval_batch(
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist, total=len(filelist)):
-            _, _, yz_mean, xz_mean, yz_std, xz_std = eval_single(
+            _, _, yz_mean, xz_mean, yz_std, xz_std, _ = eval_single(
                 fname=tomo,
                 pixel_size=pixel_size,
                 binning=binning,
