@@ -106,7 +106,7 @@ def create_slice_views(volume: npt.NDArray[any],
 
 def interpolate_surface(mesh_points: npt.NDArray[any],
                         n_points: int=100,
-):
+) -> (npt.NDArray, npt.NDArray, npt.NDArray):
     """
     Interpolates surface using mesh points
 
@@ -129,37 +129,6 @@ def interpolate_surface(mesh_points: npt.NDArray[any],
     surface = interp(xx, yy)
 
     return xx, yy, surface
-
-
-def contour_refine(contour_pts: npt.NDArray[any],
-) -> npt.NDArray:
-    """
-    some docstring
-    """
-    contour_pts_mean = contour_pts.mean(axis=0)
-
-    pca = PCA(n_components=1)
-    pca.fit(contour_pts)
-    dir_vec = pca.components_
-
-    distance = np.linalg.norm(
-        np.cross(contour_pts-contour_pts_mean, dir_vec),
-        axis=1
-    )
-
-    # thres = distance.mean() + 3 * np.std(distance)
-    # del_args = np.argwhere(distance > thres).flatten()
-
-    dist_std_LOO = np.empty((len(contour_pts)))
-    for i in range(len(contour_pts)):
-        temp = np.delete(contour_pts, i, axis=0)
-        dist_std_LOO[i] = np.std(temp)
-
-    print(dist_std_LOO)
-
-    out = np.delete(contour_pts, del_args, axis=0)
-
-    return out, del_args
 
 
 def generalised_theil_sen_fit(contour_pts: npt.NDArray[any],
@@ -218,7 +187,7 @@ def leave_one_out(contour_pts: npt.NDArray[any],
     # If the point is an outlier, determine its index
     if mse_perc_change.min() < -thres:
         points_out = np.delete(contour_pts, np.argmin(mse_perc_change), axis=0)
-        return np.argmin(mse_perc_change)
+        return int(np.argmin(mse_perc_change))
 
     return None
 
@@ -226,7 +195,7 @@ def leave_one_out(contour_pts: npt.NDArray[any],
 def refine_contour_LOO(contour_pts: npt.NDArray[any],
                        max_delete_perc: float=15.,
                        thres: float=0.1,
-) -> npt.NDArray:
+) -> list:
     """
     Iteratively remove outliers using LOO algorithm
 
@@ -260,7 +229,9 @@ def evaluate_slice(slice_coords: list,
                    use_view: str="YZ",
                    pt_thres: int=100,
                    autocontrast: bool=True,
-) -> (float, float, float):
+) -> (float, float, float, int,
+      npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray,
+):
 
     view_zy, view_zx = create_slice_views(
         volume=volume,
