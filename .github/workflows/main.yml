@@ -24,6 +24,7 @@ jobs:
           python3 -m pip install --upgrade pip
           pip3 install poetry
           pip3 install -r requirements.txt
+          poetry install --no-interaction --only-root
 
       - name: Run tests
         run: |
