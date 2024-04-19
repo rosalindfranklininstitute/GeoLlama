@@ -30,6 +30,17 @@ from skimage.transform import downscale_local_mean as DSLM
 def read_mrc(fname: str,
              px_size_nm: float,
              downscale: int=2) -> (npt.NDArray[any], float):
+    """
+    Function to read in MRC image file.
+
+    Args:
+    fname (str) : Path to image file
+    px_size_nm (float) : Pixel size of original tomogram in nm
+    downscale (int) : Internal binning factor
+
+    Returns:
+    ndarray, float
+    """
 
     with mrcfile.open(fname) as f:
         data = f.data
