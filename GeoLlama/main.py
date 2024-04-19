@@ -170,6 +170,16 @@ def main(
                            tablefmt="pretty",
             ))
 
+            # Print overall statistics
+            thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
+            thickness_std_of_mean = raw_df['Mean_thickness_nm'].std()
+
+            xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
+            xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
+
+            print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
+            print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+
             if out_csv is not None:
                 raw_df.to_csv(out_csv)
             if out_star is not None:
