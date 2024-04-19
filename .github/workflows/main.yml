@@ -32,7 +32,7 @@ jobs:
       - name: Run tests
         run: |
           pip3 install pytest pytest-cov
-          pytest --cov=GeoLlama --cov-report=xml --cov-report=html
+          pytest --cov=GeoLlama/GeoLlama --cov-report=xml --cov-report=html
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
