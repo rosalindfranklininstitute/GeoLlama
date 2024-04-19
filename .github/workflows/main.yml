@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip install poetry
-          poetry install --no-interaction --no-root
+          poetry install --no-interaction
 
       - name: Run tests
         run: |
