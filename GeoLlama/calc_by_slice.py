@@ -1,3 +1,4 @@
+
 # Copyright 2023 Rosalind Franklin Institute
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -287,13 +288,15 @@ def evaluate_slice(slice_coords: list,
     eigenvals = np.sqrt(pca.explained_variance_)
     rectangle_dims = eigenvals * 2.5      # 3 times SD to cover nearly all points
 
-    if eigenvecs[0,1] < 0:
-        eigenvecs[0] *= -1
-    if eigenvecs[1,0] < 0:
-        eigenvecs[1] *= -1
+    # Determine breadth (long semi-minor) axis
+    breadth_axis = np.argmin(np.abs(eigenvecs[:, 0]))
+    if eigenvecs[breadth_axis, 1] < 0:
+        eigenvecs[breadth_axis] *= -1 # Ensure breadth axis always points "right"
+    if np.cross(eigenvecs[breadth_axis], eigenvecs[1-breadth_axis]) > 0:
+        eigenvecs[1-breadth_axis] *= -1 # Ensure thickness axis always points "up"
 
-    angle = np.rad2deg(np.arctan2(-eigenvecs[np.argmin(eigenvals), 1],
-                                  eigenvecs[np.argmin(eigenvals), 0]))
+    angle = 90 + np.rad2deg(np.arctan2(-eigenvecs[np.argmin(eigenvals), 1],
+                                       eigenvecs[np.argmin(eigenvals), 0]))
 
     slice_breadth, slice_thickness = 2 * rectangle_dims * pixel_size_nm
     num_points = len(mask_s3)
