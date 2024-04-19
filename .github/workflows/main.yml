@@ -27,4 +27,4 @@ jobs:
       - name: Run tests
         run: |
           pip3 install pytest pytest-cov
-          pytest --cov=com --cov-report=xml --cov-report=html
+          pytest --cov=GeoLlama --cov-config=.coveragearc --cov-report=xml --cov-report=html
