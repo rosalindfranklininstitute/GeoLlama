@@ -179,17 +179,11 @@ def eval_batch(
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_std_list[idx]:.2f}")
 
     # Detect anomalies
-    thick_std_percent = np.array(thickness_std_list) / np.array(thickness_mean_list)
     xtilt_mean_of_mean = np.array(xtilt_mean_list).mean()
     xtilt_mean_std = np.std(np.array(xtilt_mean_list))
-    xtilt_accept_range = [xtilt_mean_of_mean-3*xtilt_mean_std,
-                          xtilt_mean_of_mean+3*xtilt_mean_std]
-    xtilt_std_percent = np.array(xtilt_std_list) / np.abs(np.array(xtilt_mean_list))
 
-    thick_anomaly = thick_std_percent > 0.1
-    xtilt_anomaly = \
-        (not xtilt_accept_range[0] <= np.array(xtilt_mean_of_mean) <= xtilt_accept_range[1]) or \
-        xtilt_std_percent > 0.1
+    thick_anomaly = np.array(thickness_std_list) > 30
+    xtilt_anomaly = np.array(xtilt_std_list) > 10
 
     raw_data = pd.DataFrame(
         {"filename": [f.name for f in filelist],
