@@ -1,4 +1,4 @@
-name: Python CI/CD
+name: Geollama CI/CD
 
 on:
   push:
@@ -28,3 +28,9 @@ jobs:
         run: |
           pip3 install pytest pytest-cov
           pytest --cov=GeoLlama --cov-report=xml --cov-report=html
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: rosalindfranklininstitute/GeoLlama
