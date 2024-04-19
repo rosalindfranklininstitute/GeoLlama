@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.evaluate  ##
 ## Created            : Neville Yee        ##
 ## Date created       : 05-Oct-2023        ##
-## Date last modified : 05-Oct-2023        ##
+## Date last modified : 19-Apr-2024        ##
 #############################################
 
 
@@ -38,7 +38,13 @@ mpl.use("Agg")
 
 def find_files(path: str) -> list:
     """
-    Some docstrings
+    Function to find appropriate files from given path
+
+    Args:
+    path (str) : Path to folder holding tomograms
+
+    Returns:
+    list
     """
 
     criterion = Path(path).glob("**/*.mrc")
@@ -48,6 +54,15 @@ def find_files(path: str) -> list:
 
 
 def save_figure(surface_info, save_path, binning):
+    """
+    Export data and interpolated surfaces as PNG file
+
+    Args:
+    surface_info (tuple) : Outputs (tuple) of GeoLlama evaluation module
+    save_path (str) : Path to PNG file being exported
+    binning (int) : Internal binning factor of tomogram
+    """
+
     xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, _, _ = surface_info
 
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"},
@@ -72,6 +87,14 @@ def save_figure(surface_info, save_path, binning):
 
 
 def save_text_model(surface_info, save_path, binning):
+    """
+    Export data and interpolated model as text file for conversion and visualisation in IMOD.
+
+    Args:
+    surface_info (tuple) : Outputs (tuple) of GeoLlama evaluation module
+    save_path (str) : Path to text file being exported
+    binning (int) : Internal binning factor of tomogram
+    """
     xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, model_top, model_bottom = surface_info
 
     contour_top = np.full((len(model_top),1), 1, dtype=int)
@@ -101,7 +124,18 @@ def eval_single(
         autocontrast: bool,
 ):
     """
-    Some docstring
+    Evaluate geometry of a single tomogram given source file
+
+    Args:
+    fname (str) : Path to tomogram file
+    pixel_size (float) : Pixel size of tomogram in nm
+    binning (int) : Internal binning factor for GeoLlama evaluation
+    cpu (int) : Number of cores used for parallel calculations
+    bandpass (bool) : Whether to include bandpass as a preprocessing step
+    autocontrast (bool) : Whether to include autocontrast as a preprocessing step
+
+    Returns:
+    ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
     """
 
     tomo, pixel_size = io.read_mrc(
@@ -138,7 +172,18 @@ def eval_batch(
         autocontrast: bool,
 ) -> (pd.DataFrame, pd.DataFrame):
     """
-    Some docstring
+    Evaluate geometry of tomograms given path to folder containing tomograms, then output statistics as pandas DataFrames.
+
+    Args:
+    filelist (list) : List containing paths to tomograms
+    pixel_size (float) : Pixel size of tomogram in nm
+    binning (int) : Internal binning factor for GeoLlama evaluation
+    cpu (int) : Number of cores used for parallel calculations
+    bandpass (bool) : Whether to include bandpass as a preprocessing step
+    autocontrast (bool) : Whether to include autocontrast as a preprocessing step
+
+    Returns:
+    DataFrame, DataFrame
     """
 
     thickness_mean_list = []

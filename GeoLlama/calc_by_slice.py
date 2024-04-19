@@ -1,4 +1,3 @@
-
 # Copyright 2023 Rosalind Franklin Institute
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,7 @@
 ## Module             : GeoLlama.calc_by_slice  ##
 ## Created            : Neville Yee             ##
 ## Date created       : 02-Oct-2023             ##
-## Date last modified : 09-Oct-2023             ##
+## Date last modified : 19-Apr-2024             ##
 ##################################################
 
 import itertools
@@ -88,7 +87,20 @@ def create_slice_views(volume: npt.NDArray[any],
                        coords: list,
                        std_window: int=15,
                        gaussian_sigma: int=None,
-) -> (npt.NDArray[any], npt.NDArray[any], npt.NDArray[any]):
+) -> (npt.NDArray[any], npt.NDArray[any]):
+    """
+    Create slice views from full tomogram for downstream processes
+
+    Args:
+    volume (ndarray) : input 3D image (tomogram)
+    coords (list) : list of coordinates for creation of 2D slice views
+    std_window (int) : width of window for metric calculation for 2D slices
+    gaussian_sigma (int) : Sigma parameter for Gaussian blurring kernal
+
+    Returns:
+    ndarray, ndarray
+    """
+
     std_half = std_window // 2
     z_range = (max(0, coords[0]-std_half), min(coords[0]+std_window-std_half, volume.shape[0]-1))
     x_range = (max(0, coords[1]-std_half), min(coords[1]+std_window-std_half, volume.shape[1]-1))
@@ -233,6 +245,20 @@ def evaluate_slice(slice_coords: list,
 ) -> (float, float, float, int,
       npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray,
 ):
+    """
+    Function for creation and evaluation of one 2D slice from tomogram given coordinates of intersection point
+
+    Args:
+    slice_coords (list) : list containing coordinates of intersection point for image slicing
+    volume (ndarray) : tomogram for evaluation
+    pixel_size_nm (float) : pixel size of tomogram (internally binned)
+    use_view (str) : view (orientation of slice) used for evaluation
+    pt_thres (int) : acceptance limit (number of feature pixels) of slices
+    autocontrast (bool) : whether to apply autocontrast on slices before evaluation
+
+    Returns:
+    float, float, float, int, ndarray, ndarray, ndarray, ndarray
+    """
 
     view_zy, view_zx = create_slice_views(
         volume=volume,
@@ -367,11 +393,26 @@ def evaluate_slice(slice_coords: list,
             surface_bottom_1, surface_bottom_2)
 
 
-def evaluate_full_lamella(volume,
-                          pixel_size_nm,
-                          autocontrast,
-                          cpu=1,
+def evaluate_full_lamella(volume: npt.NDArray[any],
+                          pixel_size_nm: float,
+                          autocontrast: bool,
+                          cpu: int=1,
+) -> (
+    npt.NDArray, npt.NDArray, float, float, float, float, tuple
 ):
+    """
+    Evaluation of full lamella geometry
+
+    Args:
+    volume (ndarray) : Tomogram to be evaluated
+    pixel_size_nm (float) : Pixel size (after binning) of tomogram
+    autocontrast (bool) : whether to apply autocontrast on slices before evaluation
+    cpu (int) : number of cores used in parallel calculation of slices
+
+    Returns:
+    ndarray, ndarray, float, float, float, float, tuple
+
+    """
     x_slice_list = np.arange(int(volume.shape[1]*0.2),
                              int(volume.shape[1]*0.8),
                              int(volume.shape[1]*0.025))
