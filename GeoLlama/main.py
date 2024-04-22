@@ -110,7 +110,6 @@ def main(
     """
 
     _check_cli_input(
-        batch=batch,
         path=user_path,
         pixel_size=pixel_size
     )
