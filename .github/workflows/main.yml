@@ -1,0 +1,41 @@
+name: Geollama CI/CD
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types:
+      [opened, reopened, closed]
+    branches:
+      - "**"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.14
+
+      - name: Install package
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -e .
+
+      - name: Run tests
+        run: |
+          pip3 install pytest pytest-cov
+          pytest --cov=./GeoLlama --cov-report xml:coverage.xml --cov-report term-missing --cov-branch
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: rosalindfranklininstitute/GeoLlama

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "GeoLlama"
-version = "0.1.0"
+version = "1.0.0"
 description = "A Python package for estimating sample thickness in cryo electron tomograms"
 authors = ["Neville Yee <neville.yee@rfi.ac.uk>"]
 license = "Apache V2"
@@ -21,6 +21,8 @@ rich = "^13.6.0"
 pandas = "^2.1.1"
 tabulate = "^0.9.0"
 starfile = "^0.4.12"
+matplotlib = "^3.1.2"
+icecream = "*"
 
 [tool.poetry.scripts]
 geollama = "GeoLlama.main:app"
