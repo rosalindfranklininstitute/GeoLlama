@@ -24,11 +24,13 @@ import sys
 import os
 import tempfile
 import unittest
+import unittest.mock as mock
 
 import numpy as np
-import mrcfile
+import pandas as pd
+import starfile
 
-from GeoLlama import main
+from GeoLlama import (main, evaluate)
 
 
 class MainTest(unittest.TestCase):
@@ -38,6 +40,7 @@ class MainTest(unittest.TestCase):
         # Set up temp folder structure
         self.tmpdir = tempfile.TemporaryDirectory()
         os.mkdir(f"{self.tmpdir.name}/data")
+        os.mkdir(f"{self.tmpdir.name}/anlys")
 
 
     def setUp(self):
@@ -68,6 +71,45 @@ class MainTest(unittest.TestCase):
                 pixel_size=None,
             )
         self.assertNotEqual(cm.exception, 0)
+
+
+    def test_main(self):
+        os.chdir(f"{self.tmpdir.name}/anlys")
+
+        # Create random dataframe as mock output from eval_batch
+        mock_df = pd.DataFrame(np.random.randint(0, 100, size=(10, 9)),
+                               columns=[
+                                   "filename",
+                                   "Mean_thickness_nm",
+                                   "Thickness_s.d._nm",
+                                   "Mean_X-tilt_degs",
+                                   "X-tilt_s.d._degs",
+                                   "Mean_Y-tilt_degs",
+                                   "Y-tilt_s.d._degs",
+                                   "thickness_anomaly",
+                                   "xtilt_anomaly"
+                               ]
+        )
+
+        with mock.patch.object(evaluate, "eval_batch", return_value=(mock_df, mock_df)) as m:
+            main.main(
+                user_path = "../data",
+                pixel_size = 1,
+                out_csv = "./test.csv",
+                out_star = "./test.star",
+            )
+
+            # Test if files are created
+            self.assertTrue(os.path.exists("./test.csv"))
+            self.assertTrue(os.path.exists("./test.star"))
+
+            # Read in created files
+            csv_df = pd.read_csv("./test.csv", index_col=False)
+            star_df = starfile.read("./test.star")
+
+            # Test if exported values are correct
+            pd.testing.assert_frame_equal(mock_df, csv_df)
+            pd.testing.assert_frame_equal(mock_df, star_df)
 
 
     @classmethod
