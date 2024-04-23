@@ -151,6 +151,6 @@ def main(
     print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
 
     if out_csv is not None:
-        raw_df.to_csv(out_csv)
+        raw_df.to_csv(out_csv, index=False)
     if out_star is not None:
         starfile.write(raw_df, out_star, overwrite=True)
