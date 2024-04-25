@@ -71,7 +71,7 @@ def main(
         user_path: Annotated[
             typing.Optional[str],
             typer.Option("-p", "--path",
-                         help="Path to folder holding all tomograms in batch mode."),
+                         help="Path to folder holding all tomograms. (NB. Direct path to individual tomogram file not supported.)"),
         ] = None,
         pixel_size: Annotated[
             typing.Optional[float],
