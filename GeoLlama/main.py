@@ -16,13 +16,14 @@
 ## Module             : GeoLlama.main  ##
 ## Created            : Neville Yee    ##
 ## Date created       : 03-Oct-2023    ##
-## Date last modified : 19-Apr-2024    ##
+## Date last modified : 23-Apr-2024    ##
 #########################################
 
 import os
 from pprint import pprint
 from pathlib import Path
 import typing
+from typing_extensions import Annotated
 
 import typer
 import starfile
@@ -36,8 +37,9 @@ from GeoLlama import calc_by_slice as CBS
 app = typer.Typer()
 
 
-def _check_cli_input(path: typing.Optional[str],
-                     pixel_size: typing.Optional[float]
+def _check_cli_input(
+        path: typing.Optional[str],
+        pixel_size: typing.Optional[float]
 ):
     """
     Check user inputs for CLI version
@@ -49,51 +51,58 @@ def _check_cli_input(path: typing.Optional[str],
 
     if path is None:
         raise ValueError("Data path (-p) must be given.")
+    elif not os.path.isdir(Path(path)):
+        raise NotADirectoryError("Given path must be a folder.")
+
     if pixel_size is None:
         raise ValueError("Pixel size (-s) must be given.")
-
-    assert(os.path.isdir(path)), \
-        "The path given must be a folder in batch mode."
 
 
 @app.command()
 def main(
-        autocontrast: bool = typer.Option(
-            False,
-            help="Apply autocontrast to slices prior to evaluation.",
-        ),
-        bandpass: bool = typer.Option(
-            False,
-            help="Apply bandpass filter to tomograms prior to evaluation.",
-        ),
-        user_path: typing.Optional[str] = typer.Option(
-            None, "-p", "--path",
-            help="Path to folder holding all tomograms in batch mode.",
-        ),
-        pixel_size: typing.Optional[float] = typer.Option(
-            None, "-s", "--pixel_size",
-            help="Tomogram pixel size in nm.",
-        ),
-        binning: int = typer.Option(
-            1, "-b", "--bin",
-            help="Binning factor for tomogram evaluation.",
-            show_default=True,
-        ),
-        cpu: int = typer.Option(
-            1, "-np", "--num_proc",
-            help="Number of CPUs used.",
-            show_default=True,
-        ),
-        out_csv: typing.Optional[str] = typer.Option(
-            None, "-oc", "--csv",
-            help="Output path for CSV file.",
-            show_default=True,
-        ),
-        out_star: typing.Optional[str] = typer.Option(
-            None, "-os", "--star",
-            help="Output path for STAR file.",
-            show_default=True,
-        ),
+        autocontrast: Annotated[
+            bool,
+            typer.Option(help="Apply autocontrast to slices prior to evaluation. Recommended.")
+        ] = False,
+        bandpass: Annotated[
+            bool,
+            typer.Option(help="Apply bandpass filter to tomograms prior to evaluation.")
+        ] = False,
+        user_path: Annotated[
+            typing.Optional[str],
+            typer.Option("-p", "--path",
+                         help="Path to folder holding all tomograms. (NB. Direct path to individual tomogram file not supported.)"),
+        ] = None,
+        pixel_size: Annotated[
+            typing.Optional[float],
+            typer.Option(
+                "-s", "--pixel_size",
+                help="Tomogram pixel size in nm."),
+        ] = None,
+        binning: Annotated[
+            int,
+            typer.Option(
+            "-b", "--bin",
+            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (256, 256) to (512, 512). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 4 or -b 8."),
+        ] = 1,
+        cpu: Annotated[
+            int,
+            typer.Option(
+                "-np", "--num_proc",
+                help="Number of CPUs used."),
+        ] = 1,
+        out_csv: Annotated[
+            typing.Optional[str],
+            typer.Option(
+                "-oc", "--csv",
+                help="Output path for CSV file."),
+        ] = None,
+        out_star: Annotated[
+            typing.Optional[str],
+            typer.Option(
+                "-os", "--star",
+                help="Output path for STAR file."),
+        ] = None,
 ):
     """
     Main API for running GeoLlama
@@ -110,7 +119,6 @@ def main(
     """
 
     _check_cli_input(
-        batch=batch,
         path=user_path,
         pixel_size=pixel_size
     )
@@ -143,6 +151,6 @@ def main(
     print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
 
     if out_csv is not None:
-        raw_df.to_csv(out_csv)
+        raw_df.to_csv(out_csv, index=False)
     if out_star is not None:
         starfile.write(raw_df, out_star, overwrite=True)
