@@ -143,12 +143,16 @@ def main(
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
     thickness_std_of_mean = raw_df['Mean_thickness_nm'].std()
+    thickness_anomaly_pct = raw_df['thickness_anomaly'].mean() * 100
 
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
+    xtilt_anomaly_pct = raw_df['xtilt_anomaly'].mean() * 100
 
     print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
     print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+    print(f"% Thickness anomaly = {thickness_anomaly_pct:.2f}")
+    print(f"% x-tilt anomaly = {xtilt_anomaly_pct:.2f}")
 
     if out_csv is not None:
         raw_df.to_csv(out_csv, index=False)
