@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.calc_by_slice  ##
 ## Created            : Neville Yee             ##
 ## Date created       : 02-Oct-2023             ##
-## Date last modified : 19-Apr-2024             ##
+## Date last modified : 25-Apr-2024             ##
 ##################################################
 
 import itertools
@@ -26,6 +26,7 @@ import multiprocessing as mp
 
 import numpy as np
 import numpy.typing as npt
+from numpy.lib.stride_tricks import sliding_window_view as swv
 
 from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
@@ -84,8 +85,7 @@ def autocontrast_slice(image: npt.NDArray[any],
 
 
 def create_slice_views(volume: npt.NDArray[any],
-                       coords: list,
-                       std_window: int=15,
+                       sliding_window_width: int=15,
                        gaussian_sigma: int=None,
 ) -> (npt.NDArray[any], npt.NDArray[any]):
     """
@@ -93,22 +93,24 @@ def create_slice_views(volume: npt.NDArray[any],
 
     Args:
     volume (ndarray) : input 3D image (tomogram)
-    coords (list) : list of coordinates for creation of 2D slice views
-    std_window (int) : width of window for metric calculation for 2D slices
+    sliding_window_width (int) : width of sliding window for metric calculation for 2D slices
     gaussian_sigma (int) : Sigma parameter for Gaussian blurring kernal
 
     Returns:
     ndarray, ndarray
     """
 
-    std_half = std_window // 2
-    z_range = (max(0, coords[0]-std_half), min(coords[0]+std_window-std_half, volume.shape[0]-1))
-    x_range = (max(0, coords[1]-std_half), min(coords[1]+std_window-std_half, volume.shape[1]-1))
-    y_range = (max(0, coords[2]-std_half), min(coords[2]+std_window-std_half, volume.shape[2]-1))
+    # Create sliding window views
+    sliding_zy = swv(volume, std_window, axis=1)
+    sliding_zx = swv(volume, std_window, axis=2)
 
-    # view_xy = np.std(volume[z_range[0]: z_range[1], :, :], axis=0)
-    view_zy = np.std(volume[:, x_range[0]: x_range[1], :], axis=1) * np.sum(volume[:, x_range[0]: x_range[1], :], axis=1)
-    view_zx = np.std(volume[:, :, y_range[0]: y_range[1]], axis=2) * np.sum(volume[:, :, y_range[0]: y_range[1]], axis=2)
+    # Create views for calculation using sliding window views
+    view_zy_raw = sliding_zy.sum(axis=-1) * sliding_zy.std(axis=-1)
+    view_zx_raw = sliding_zx.sum(axis=-1) * sliding_zx.std(axis=-1)
+
+    # Swap relevant axes to 0 for downstream processes
+    view_zy = np.moveaxis(view_zy_raw, 1, 0)
+    view_zx = np.moveaxis(view_zx_raw, 2, 0)
 
     if gaussian_sigma is not None:
         view_zy = gaussian(view_zy, sigma=gaussian_sigma)
