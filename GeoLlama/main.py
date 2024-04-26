@@ -130,6 +130,11 @@ output_star_path: None
 
 @app.command()
 def main(
+        input_config: Annotated[
+            typing.Optional[str],
+            typer.Option("-i", "--config",
+                         help="Input configuration file. (NB. Overrides any parameters provided on command-line)"),
+        ] = None,
         autocontrast: Annotated[
             bool,
             typer.Option(help="Apply autocontrast to slices prior to evaluation. Recommended.")
@@ -178,6 +183,7 @@ def main(
     Main API for running GeoLlama
 
     Args:
+    input_config (str) : Path to input config file
     autocontrast (bool) : Apply autocontrast to slices prior to evaluation
     bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
     user_path (str) : Path to folder holding all tomograms in batch mode
@@ -187,6 +193,20 @@ def main(
     out_csv (str) : Output path for CSV file
     out_star (str) : Output path for STAR file
     """
+
+    if input_config is not None:
+        config = _read_config(input_config)
+
+        # Convert config dictionary keys to internal variables
+        user_path = config['data_path']
+        pixel_size = config['pixel_size_nm']
+        binning = config['binning']
+        autocontrast = config['autocontrast']
+        adaptive = config['adaptive']
+        bandpass = config['bandpass']
+        cpu = config['num_cores']
+        out_csv = config['output_csv_path']
+        out_star = config['output_star_path']
 
     _check_cli_input(
         path=user_path,
