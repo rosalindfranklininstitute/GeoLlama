@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.calc_by_slice  ##
 ## Created            : Neville Yee             ##
 ## Date created       : 02-Oct-2023             ##
-## Date last modified : 19-Apr-2024             ##
+## Date last modified : 25-Apr-2024             ##
 ##################################################
 
 import itertools
@@ -26,6 +26,7 @@ import multiprocessing as mp
 
 import numpy as np
 import numpy.typing as npt
+from numpy.lib.stride_tricks import sliding_window_view as swv
 
 from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
@@ -84,8 +85,7 @@ def autocontrast_slice(image: npt.NDArray[any],
 
 
 def create_slice_views(volume: npt.NDArray[any],
-                       coords: list,
-                       std_window: int=15,
+                       sliding_window_width: int=15,
                        gaussian_sigma: int=None,
 ) -> (npt.NDArray[any], npt.NDArray[any]):
     """
@@ -93,22 +93,24 @@ def create_slice_views(volume: npt.NDArray[any],
 
     Args:
     volume (ndarray) : input 3D image (tomogram)
-    coords (list) : list of coordinates for creation of 2D slice views
-    std_window (int) : width of window for metric calculation for 2D slices
+    sliding_window_width (int) : width of sliding window for metric calculation for 2D slices
     gaussian_sigma (int) : Sigma parameter for Gaussian blurring kernal
 
     Returns:
     ndarray, ndarray
     """
 
-    std_half = std_window // 2
-    z_range = (max(0, coords[0]-std_half), min(coords[0]+std_window-std_half, volume.shape[0]-1))
-    x_range = (max(0, coords[1]-std_half), min(coords[1]+std_window-std_half, volume.shape[1]-1))
-    y_range = (max(0, coords[2]-std_half), min(coords[2]+std_window-std_half, volume.shape[2]-1))
+    # Create sliding window views
+    sliding_zy = swv(volume, sliding_window_width, axis=1)
+    sliding_zx = swv(volume, sliding_window_width, axis=2)
 
-    # view_xy = np.std(volume[z_range[0]: z_range[1], :, :], axis=0)
-    view_zy = np.std(volume[:, x_range[0]: x_range[1], :], axis=1) * np.sum(volume[:, x_range[0]: x_range[1], :], axis=1)
-    view_zx = np.std(volume[:, :, y_range[0]: y_range[1]], axis=2) * np.sum(volume[:, :, y_range[0]: y_range[1]], axis=2)
+    # Create views for calculation using sliding window views
+    view_zy_raw = sliding_zy.sum(axis=-1) * sliding_zy.std(axis=-1)
+    view_zx_raw = sliding_zx.sum(axis=-1) * sliding_zx.std(axis=-1)
+
+    # Swap relevant axes to 0 for downstream processes
+    view_zy = np.moveaxis(view_zy_raw, 1, 0)
+    view_zx = np.moveaxis(view_zx_raw, 2, 0)
 
     if gaussian_sigma is not None:
         view_zy = gaussian(view_zy, sigma=gaussian_sigma)
@@ -236,10 +238,8 @@ def refine_contour_LOO(contour_pts: npt.NDArray[any],
     return remove_list
 
 
-def evaluate_slice(slice_coords: list,
-                   volume: npt.NDArray[any],
+def evaluate_slice(view_input: npt.NDArray[any],
                    pixel_size_nm: float,
-                   use_view: str="YZ",
                    pt_thres: int=100,
                    autocontrast: bool=True,
 ) -> (float, float, float, int,
@@ -249,10 +249,8 @@ def evaluate_slice(slice_coords: list,
     Function for creation and evaluation of one 2D slice from tomogram given coordinates of intersection point
 
     Args:
-    slice_coords (list) : list containing coordinates of intersection point for image slicing
     volume (ndarray) : tomogram for evaluation
     pixel_size_nm (float) : pixel size of tomogram (internally binned)
-    use_view (str) : view (orientation of slice) used for evaluation
     pt_thres (int) : acceptance limit (number of feature pixels) of slices
     autocontrast (bool) : whether to apply autocontrast on slices before evaluation
 
@@ -260,17 +258,7 @@ def evaluate_slice(slice_coords: list,
     float, float, float, int, ndarray, ndarray, ndarray, ndarray
     """
 
-    view_zy, view_zx = create_slice_views(
-        volume=volume,
-        coords=slice_coords,
-        std_window=5,
-        gaussian_sigma=3
-    )
-
-    if use_view=="YZ":
-        view = view_zy.T
-    elif use_view=="XZ":
-        view = view_zx.T
+    view = view_input.T
 
     if autocontrast:
         view = autocontrast_slice(view)
@@ -280,9 +268,6 @@ def evaluate_slice(slice_coords: list,
     mask_s1 = np.argwhere(view**2 >= thres)
 
     # Skip slice if no pixels masked
-    # if len(mask_s1) < pt_thres:
-    #     return
-    # centroid_s1 = 0.5*(mask_s1.max(axis=0) + mask_s1.min(axis=0))
     centroid_s1 = mask_s1.mean(axis=0)
 
     # Step 2: Use Mahalanobis distance to remove potential outliers
@@ -292,19 +277,12 @@ def evaluate_slice(slice_coords: list,
     p_val = 1 - chi2.cdf(np.sqrt(maha_dist), 1)
     mask_s2 = np.delete(mask_s1, np.argwhere(p_val<0.07), axis=0)
 
-    # Skip slice if no pixels masked
-    # if len(mask_s2) < pt_thres:
-    #     return
-
     # Step 3: Use distance-based clustering to find sample region
     clusters = DBSCAN(eps=15, min_samples=15).fit_predict(mask_s2)
     mask_s3_args = np.argwhere(clusters==mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
     # Skip slice if no pixels masked
-    # if len(mask_s3) < pt_thres:
-    #     return
-    # centroid_s3 = 0.5*(mask_s3.max(axis=0) + mask_s3.min(axis=0))
     centroid_s3 = mask_s3.mean(axis=0)
 
     # Step 4: Use PCA to find best rectangle fits
@@ -341,62 +319,16 @@ def evaluate_slice(slice_coords: list,
     bottom_pt1 = lamella_centre - cell_vecs[1] + cell_vecs[0]
     bottom_pt2 = lamella_centre - cell_vecs[1] - cell_vecs[0]
 
-    if use_view == "YZ":
-        surface_top_1 = np.array(
-            [top_pt1[0],
-             slice_coords[1],
-             top_pt1[1]],
-        )
-        surface_top_2 = np.array(
-            [top_pt2[0],
-             slice_coords[1],
-             top_pt2[1]],
-        )
-        surface_bottom_1 = np.array(
-            [bottom_pt1[0],
-             slice_coords[1],
-             bottom_pt1[1]]
-        )
-        surface_bottom_2 = np.array(
-            [bottom_pt2[0],
-             slice_coords[1],
-             bottom_pt2[1]],
-        )
-
-    if use_view == "XZ":
-        surface_top_1 = np.array(
-            [top_pt1[0],
-             top_pt1[1],
-             slice_coords[2],
-            ]
-        )
-        surface_top_2 = np.array(
-            [top_pt2[0],
-             top_pt2[1],
-             slice_coords[2],
-            ],
-        )
-        surface_bottom_1 = np.array(
-            [bottom_pt1[0],
-             bottom_pt1[1],
-             slice_coords[2],
-            ]
-        )
-        surface_bottom_2 = np.array(
-            [bottom_pt2[0],
-             bottom_pt2[1],
-             slice_coords[2],
-            ],
-        )
     return (slice_breadth, slice_thickness, angle, num_points,
-            surface_top_1, surface_top_2,
-            surface_bottom_1, surface_bottom_2)
+            top_pt1, top_pt2, bottom_pt1, bottom_pt2)
 
 
 def evaluate_full_lamella(volume: npt.NDArray[any],
                           pixel_size_nm: float,
                           autocontrast: bool,
                           cpu: int=1,
+                          discard_pct: float=20,
+                          step_pct: float=2.5,
 ) -> (
     npt.NDArray, npt.NDArray, float, float, float, float, tuple
 ):
@@ -408,38 +340,51 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
     pixel_size_nm (float) : Pixel size (after binning) of tomogram
     autocontrast (bool) : whether to apply autocontrast on slices before evaluation
     cpu (int) : number of cores used in parallel calculation of slices
+    discard_pct (float) : % of pixels from either end along an axis to discard.
+    step_pct (float) : % of total pixels along an axis per step
 
     Returns:
     ndarray, ndarray, float, float, float, float, tuple
 
     """
-    x_slice_list = np.arange(int(volume.shape[1]*0.2),
-                             int(volume.shape[1]*0.8),
-                             int(volume.shape[1]*0.025))
-    y_slice_list = np.arange(int(volume.shape[2]*0.2),
-                             int(volume.shape[2]*0.8),
-                             int(volume.shape[2]*0.025))
+
+    # Create slice views
+    zy_stack, zx_stack = create_slice_views(
+        volume=volume,
+        sliding_window_width=5,
+        gaussian_sigma=3
+    )
+
+    # Create slice stacks for assessment (trimming)
+    zy_slice_list = np.arange(int(volume.shape[1]*0.01*discard_pct),
+                             int(volume.shape[1]*0.01*(100-discard_pct)),
+                             int(volume.shape[1]*0.01*step_pct))
+    zx_slice_list = np.arange(int(volume.shape[2]*0.01*discard_pct),
+                             int(volume.shape[2]*0.01*(100-discard_pct)),
+                             int(volume.shape[2]*0.01*step_pct))
+
+    zy_stack_assessment = zy_stack[zy_slice_list]
+    zx_stack_assessment = zx_stack[zx_slice_list]
 
     # Evaluation along X axis (YZ-slices)
-    x_coords = np.empty((len(x_slice_list), 3), dtype=int)
-    x_coords[:, 0] = volume.shape[0]//2
-    x_coords[:, 1] = x_slice_list
-    x_coords[:, 2] = volume.shape[2]//2
     with mp.Pool(cpu) as p:
         f = partial(evaluate_slice,
-                    volume=volume,
                     pixel_size_nm=pixel_size_nm,
                     autocontrast=autocontrast,
-                    use_view="YZ"
         )
-        yz_output = np.array(p.map(f, x_coords), dtype=object)
+        yz_output = np.array(p.map(f, zy_stack_assessment), dtype=object)
 
     yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//8, 8))
     yz_full_stats = np.array(yz_output[:, :4], dtype=float)
-    yz_surface_top_1 = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output), 3)
-    yz_surface_top_2 = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output), 3)
-    yz_surface_bottom_1 = np.concatenate(yz_output[:,6]).ravel().reshape(len(yz_output), 3)
-    yz_surface_bottom_2 = np.concatenate(yz_output[:,7]).ravel().reshape(len(yz_output), 3)
+    yz_surface_top_1_2d = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output), 2)
+    yz_surface_top_2_2d = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output), 2)
+    yz_surface_bottom_1_2d = np.concatenate(yz_output[:,6]).ravel().reshape(len(yz_output), 2)
+    yz_surface_bottom_2_2d = np.concatenate(yz_output[:,7]).ravel().reshape(len(yz_output), 2)
+
+    yz_surface_top_1 = np.insert(yz_surface_top_1_2d, 1, zy_slice_list, axis=1)
+    yz_surface_top_2 = np.insert(yz_surface_top_2_2d, 1, zy_slice_list, axis=1)
+    yz_surface_bottom_1 = np.insert(yz_surface_bottom_1_2d, 1, zy_slice_list, axis=1)
+    yz_surface_bottom_2 = np.insert(yz_surface_bottom_2_2d, 1, zy_slice_list, axis=1)
 
     yz_surface_top = np.concatenate((yz_surface_top_1, yz_surface_top_2))
     yz_surface_bottom = np.concatenate((yz_surface_bottom_1, yz_surface_bottom_2))
@@ -462,18 +407,12 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
     # yz_full_stats_refined = np.array([s for s in yz_remove_empty if s[3]>yz_thres])
 
     # Evaluation along Y axis (XZ-slices)
-    y_coords = np.empty((len(y_slice_list), 3), dtype=int)
-    y_coords[:, 0] = volume.shape[0]//2
-    y_coords[:, 1] = volume.shape[1]//2
-    y_coords[:, 2] = y_slice_list
     with mp.Pool(cpu) as p:
         f = partial(evaluate_slice,
-                    volume=volume,
                     pixel_size_nm=pixel_size_nm,
                     autocontrast=autocontrast,
-                    use_view="XZ"
         )
-        xz_output = np.array(p.map(f, y_coords), dtype=object)
+        xz_output = np.array(p.map(f, zx_stack_assessment), dtype=object)
 
     xz_full_stats = np.array(xz_output[:, :4], dtype=float)
 

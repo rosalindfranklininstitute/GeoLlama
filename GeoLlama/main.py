@@ -64,6 +64,10 @@ def main(
             bool,
             typer.Option(help="Apply autocontrast to slices prior to evaluation. Recommended.")
         ] = False,
+        adaptive: Annotated[
+            bool,
+            typer.Option(help="Re-evaluate tomogram with doubled sampling if anomaly detected. Warning: using adaptive will result in an increase in overall execution time."),
+        ] = False,
         bandpass: Annotated[
             bool,
             typer.Option(help="Apply bandpass filter to tomograms prior to evaluation.")
@@ -109,6 +113,7 @@ def main(
 
     Args:
     autocontrast (bool) : Apply autocontrast to slices prior to evaluation
+    adaptive (bool) : Whether to use adaptive mode (doubling sampling in second run if anomaly detected)
     bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
     user_path (str) : Path to folder holding all tomograms in batch mode
     pixel_size (float) : Tomogram pixel size in nm
@@ -134,6 +139,7 @@ def main(
         cpu=cpu,
         bandpass=bandpass,
         autocontrast=autocontrast,
+        adaptive=adaptive,
     )
     print(tabulate(show_df,
                    headers="keys",
@@ -143,12 +149,17 @@ def main(
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
     thickness_std_of_mean = raw_df['Mean_thickness_nm'].std()
+    thickness_anomaly_pct = raw_df['thickness_anomaly'].mean() * 100
 
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
+    xtilt_anomaly_pct = raw_df['xtilt_anomaly'].mean() * 100
+
+    anomaly_both_pct = (raw_df['thickness_anomaly'] & raw_df['xtilt_anomaly']).mean() * 100
 
     print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
     print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+    print(f"% Anomaly (thickness/xtilt/both) = {thickness_anomaly_pct:.2f} / {xtilt_anomaly_pct:.2f} / {anomaly_both_pct:.2f}")
 
     if out_csv is not None:
         raw_df.to_csv(out_csv, index=False)
