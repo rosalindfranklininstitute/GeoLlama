@@ -73,6 +73,18 @@ class MainTest(unittest.TestCase):
         self.assertNotEqual(cm.exception, 0)
 
 
+    def test_generate_config(self):
+        os.chdir(f"{self.tmpdir.name}/anlys")
+
+        # Test if correct file is generated with default output path
+        main.generate_config()
+        self.assertTrue(os.path.exists("./config.yaml"))
+
+        # Test if correct file is generated with default output path
+        main.generate_config(f"./new_config.yaml")
+        self.assertTrue(os.path.exists("./new_config.yaml"))
+
+
     def test_main(self):
         os.chdir(f"{self.tmpdir.name}/anlys")
 

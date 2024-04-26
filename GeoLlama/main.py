@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.main  ##
 ## Created            : Neville Yee    ##
 ## Date created       : 03-Oct-2023    ##
-## Date last modified : 23-Apr-2024    ##
+## Date last modified : 26-Apr-2024    ##
 #########################################
 
 import os
@@ -24,6 +24,7 @@ from pprint import pprint
 from pathlib import Path
 import typing
 from typing_extensions import Annotated
+import sys
 
 import typer
 import starfile
@@ -56,6 +57,42 @@ def _check_cli_input(
 
     if pixel_size is None:
         raise ValueError("Pixel size (-s) must be given.")
+
+
+@app.command()
+def generate_config(
+        output_path: Annotated[
+            typing.Optional[str],
+            typer.Option(help="Path to output YAML config file.")
+        ] = "./config.yaml",
+):
+    """
+    Generates default configuration file
+
+    Args:
+    output_path (str) : Path to output yaml file
+    """
+    import ruamel.yaml
+
+    config_str = """ \
+# Essential parameters
+data_path: None
+pixel_size: None
+
+# Optional parameters
+binning: 1
+autoconstrast: False
+bandpass: False
+cpus: 1
+output_csv_path: None
+output_star_path: None
+"""
+
+    yaml = ruamel.yaml.YAML()
+    data = yaml.load(config_str)
+
+    yaml.default_flow_style=False
+    yaml.dump(data, Path(output_path))
 
 
 @app.command()
