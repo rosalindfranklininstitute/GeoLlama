@@ -327,6 +327,8 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
                           pixel_size_nm: float,
                           autocontrast: bool,
                           cpu: int=1,
+                          discard_pct: float=20,
+                          step_pct: float=2.5,
 ) -> (
     npt.NDArray, npt.NDArray, float, float, float, float, tuple
 ):
@@ -338,6 +340,8 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
     pixel_size_nm (float) : Pixel size (after binning) of tomogram
     autocontrast (bool) : whether to apply autocontrast on slices before evaluation
     cpu (int) : number of cores used in parallel calculation of slices
+    discard_pct (float) : % of pixels from either end along an axis to discard.
+    step_pct (float) : % of total pixels along an axis per step
 
     Returns:
     ndarray, ndarray, float, float, float, float, tuple
@@ -352,12 +356,12 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
     )
 
     # Create slice stacks for assessment (trimming)
-    zy_slice_list = np.arange(int(volume.shape[1]*0.2),
-                             int(volume.shape[1]*0.8),
-                             int(volume.shape[1]*0.025))
-    zx_slice_list = np.arange(int(volume.shape[2]*0.2),
-                             int(volume.shape[2]*0.8),
-                             int(volume.shape[2]*0.025))
+    zy_slice_list = np.arange(int(volume.shape[1]*0.01*discard_pct),
+                             int(volume.shape[1]*0.01*(100-discard_pct)),
+                             int(volume.shape[1]*0.01*step_pct))
+    zx_slice_list = np.arange(int(volume.shape[2]*0.01*discard_pct),
+                             int(volume.shape[2]*0.01*(100-discard_pct)),
+                             int(volume.shape[2]*0.01*step_pct))
 
     zy_stack_assessment = zy_stack[zy_slice_list]
     zx_stack_assessment = zx_stack[zx_slice_list]

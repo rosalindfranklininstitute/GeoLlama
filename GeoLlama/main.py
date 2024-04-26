@@ -64,6 +64,10 @@ def main(
             bool,
             typer.Option(help="Apply autocontrast to slices prior to evaluation. Recommended.")
         ] = False,
+        adaptive: Annotated[
+            bool,
+            typer.Option(help="Re-evaluate tomogram with doubled sampling if anomaly detected. Warning: using adaptive will result in an increase in overall execution time."),
+        ] = False,
         bandpass: Annotated[
             bool,
             typer.Option(help="Apply bandpass filter to tomograms prior to evaluation.")
@@ -109,6 +113,7 @@ def main(
 
     Args:
     autocontrast (bool) : Apply autocontrast to slices prior to evaluation
+    adaptive (bool) : Whether to use adaptive mode (doubling sampling in second run if anomaly detected)
     bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
     user_path (str) : Path to folder holding all tomograms in batch mode
     pixel_size (float) : Tomogram pixel size in nm
@@ -134,6 +139,7 @@ def main(
         cpu=cpu,
         bandpass=bandpass,
         autocontrast=autocontrast,
+        adaptive=adaptive,
     )
     print(tabulate(show_df,
                    headers="keys",

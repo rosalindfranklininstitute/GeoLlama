@@ -122,6 +122,7 @@ def eval_single(
         cpu: int,
         bandpass: bool,
         autocontrast: bool,
+        adaptive: bool
 ):
     """
     Evaluate geometry of a single tomogram given source file
@@ -133,6 +134,7 @@ def eval_single(
     cpu (int) : Number of cores used for parallel calculations
     bandpass (bool) : Whether to include bandpass as a preprocessing step
     autocontrast (bool) : Whether to include autocontrast as a preprocessing step
+    adaptive (bool) : Whether to use adaptive mode (doubling sampling in second run if anomaly detected)
 
     Returns:
     ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
@@ -150,6 +152,18 @@ def eval_single(
         cpu=cpu,
         autocontrast=autocontrast,
     )
+
+    # Adaptive mode
+    if adaptive:
+        anomalous = (yz_std[1] > 30 or yz_std[2] > 10)
+        if anomalous:
+            yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces = CBS.evaluate_full_lamella(
+                volume=CBS.filter_bandpass(tomo) if bandpass else tomo,
+                pixel_size_nm=pixel_size,
+                cpu=cpu,
+                autocontrast=autocontrast,
+                step_pct=1.25,
+            )
 
     save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
@@ -170,6 +184,7 @@ def eval_batch(
         cpu: int,
         bandpass: bool,
         autocontrast: bool,
+        adaptive: bool,
 ) -> (pd.DataFrame, pd.DataFrame):
     """
     Evaluate geometry of tomograms given path to folder containing tomograms, then output statistics as pandas DataFrames.
@@ -181,6 +196,7 @@ def eval_batch(
     cpu (int) : Number of cores used for parallel calculations
     bandpass (bool) : Whether to include bandpass as a preprocessing step
     autocontrast (bool) : Whether to include autocontrast as a preprocessing step
+    adaptive (bool) : Whether to use adaptive mode (doubling sampling in second run if anomaly detected)
 
     Returns:
     DataFrame, DataFrame
