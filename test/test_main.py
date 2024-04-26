@@ -73,6 +73,26 @@ class MainTest(unittest.TestCase):
         self.assertNotEqual(cm.exception, 0)
 
 
+    def test_read_config(self):
+        # Generate default config file
+        os.chdir(f"{self.tmpdir.name}/anlys")
+        main.generate_config()
+
+        # Test if config file is read correctly
+        config = main._read_config("./config.yaml")
+
+        self.assertTrue(len(config), 9)
+        self.assertTrue(config['data_path'], None)
+        self.assertTrue(config['pixel_size_nm'], None)
+        self.assertTrue(config['binning'], 1)
+        self.assertFalse(config['autocontrast'])
+        self.assertFalse(config['adaptive'])
+        self.assertFalse(config['bandpass'])
+        self.assertTrue(config['num_cores'], 1)
+        self.assertTrue(config['output_csv_path'], None)
+        self.assertTrue(config['output_star_path'], None)
+
+
     def test_generate_config(self):
         os.chdir(f"{self.tmpdir.name}/anlys")
 

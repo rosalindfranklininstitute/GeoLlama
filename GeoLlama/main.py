@@ -59,6 +59,38 @@ def _check_cli_input(
         raise ValueError("Pixel size (-s) must be given.")
 
 
+def _read_config(
+        config_fname: str
+) -> dict:
+    """
+    Parse GeoLlama config YAML file
+
+    Args:
+    config_fname (str) : Path to config file
+
+    Returns:
+    dict
+    """
+    import ruamel.yaml
+
+    if not os.path.exists(config_fname):
+        raise IOError(f"{config_fname} does not exist.")
+
+    yaml = ruamel.yaml.YAML()
+    config = yaml.load(Path(config_fname))
+
+    # Check config file has correct dictionary keys
+    keys = [
+        "data_path", "pixel_size_nm", "binning", "autocontrast",
+        "adaptive", "bandpass", "num_cores", "output_csv_path", "output_star_path"
+    ]
+    for key in keys:
+        if not key in config:
+            raise ValueError(f"{key} keyword missing in config file.")
+
+    return config
+
+
 @app.command()
 def generate_config(
         output_path: Annotated[
@@ -77,13 +109,14 @@ def generate_config(
     config_str = """ \
 # Essential parameters
 data_path: None
-pixel_size: None
+pixel_size_nm: None
 
 # Optional parameters
 binning: 1
-autoconstrast: False
+autocontrast: False
+adaptive: False
 bandpass: False
-cpus: 1
+num_cores: 1
 output_csv_path: None
 output_star_path: None
 """
