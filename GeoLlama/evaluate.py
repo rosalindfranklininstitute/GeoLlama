@@ -22,6 +22,8 @@
 
 from pathlib import Path
 import typing
+import logging
+from rich.logging import RichHandler
 
 import numpy as np
 import matplotlib as mpl
@@ -32,6 +34,12 @@ import pandas as pd
 from GeoLlama.prog_bar import (prog_bar, clear_tasks)
 from GeoLlama import io
 from GeoLlama import calc_by_slice as CBS
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(message)s",
+                    datefmt="%d-%b-%y %H:%M:%S",
+                    handlers=[RichHandler()]
+)
 
 mpl.use("Agg")
 
@@ -157,6 +165,7 @@ def eval_single(
     if adaptive:
         anomalous = (yz_std[1] > 30 or yz_std[2] > 10)
         if anomalous:
+            logging.info(f"Adaptive mode triggered for {fname.name}.")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if bandpass else tomo,
                 pixel_size_nm=pixel_size,
@@ -224,6 +233,7 @@ def eval_batch(
                 cpu=cpu,
                 bandpass=bandpass,
                 autocontrast=autocontrast,
+                adaptive=adaptive
             )
 
             thickness_mean_list.append(yz_mean[1])
