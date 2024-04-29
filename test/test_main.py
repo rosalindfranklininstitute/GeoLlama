@@ -100,7 +100,7 @@ class MainTest(unittest.TestCase):
         main.generate_config()
         self.assertTrue(os.path.exists("./config.yaml"))
 
-        # Test if correct file is generated with default output path
+        # Test if correct file is generated with given output path
         main.generate_config(f"./new_config.yaml")
         self.assertTrue(os.path.exists("./new_config.yaml"))
 
