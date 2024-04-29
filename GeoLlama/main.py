@@ -188,6 +188,10 @@ def main(
                 "-os", "--star",
                 help="Output path for STAR file."),
         ] = None,
+        printout: Annotated[
+            bool,
+            typer.Option(help="Print statistical output after evaluation. Recommended for standalone use of GeoLlama.")
+        ] = True,
 ):
     """
     Main API for running GeoLlama
@@ -202,6 +206,7 @@ def main(
     cpu (int) : Number of CPUs used
     out_csv (str) : Output path for CSV file
     out_star (str) : Output path for STAR file
+    printout (bool) : Print statistical output after evaluation
     """
 
     if input_config is not None:
@@ -236,10 +241,6 @@ def main(
         bandpass=bandpass,
         autocontrast=autocontrast,
     )
-    print(tabulate(show_df,
-                   headers="keys",
-                   tablefmt="pretty",
-    ))
 
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
@@ -248,10 +249,15 @@ def main(
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
 
-    print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
-    print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
-
     if out_csv is not None:
         raw_df.to_csv(out_csv, index=False)
     if out_star is not None:
         starfile.write(raw_df, out_star, overwrite=True)
+
+    if printout:
+        print(tabulate(show_df,
+                       headers="keys",
+                       tablefmt="pretty",
+        ))
+        print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
+        print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
