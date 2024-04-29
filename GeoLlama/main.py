@@ -25,6 +25,7 @@ from pathlib import Path
 import typing
 from typing_extensions import Annotated
 import sys
+import multiprocessing as mp
 
 import typer
 import starfile
@@ -38,16 +39,18 @@ from GeoLlama import calc_by_slice as CBS
 app = typer.Typer()
 
 
-def _check_cli_input(
+def _check_user_input(
         path: typing.Optional[str],
-        pixel_size: typing.Optional[float]
+        pixel_size: typing.Optional[float],
+        num_cores: typing.Optional[int],
 ):
     """
-    Check user inputs for CLI version
+    Check user inputs
 
     Args:
     path (str) : Path to tomogram (non-batch mode) or folder containing tomograms (batch mode)
     pixel_size (float) : Pixel size of original tomogram(s) in nm
+    num_cores (int) : Number of cores designated for parallel processing
     """
 
     if path is None:
@@ -57,6 +60,13 @@ def _check_cli_input(
 
     if pixel_size is None:
         raise ValueError("Pixel size (-s) must be given.")
+    elif pixel_size <= 0:
+        raise ValueError("Pixel size (-s) must be a positive number.")
+
+    if not isinstance(num_cores, int):
+        raise ValueError("num_cores (-np) must be an integer.")
+    elif not 1 <= num_cores <= mp.cpu_count():
+        raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}.")
 
 
 def _read_config(
@@ -208,9 +218,10 @@ def main(
         out_csv = config['output_csv_path']
         out_star = config['output_star_path']
 
-    _check_cli_input(
+    _check_user_input(
         path=user_path,
-        pixel_size=pixel_size
+        pixel_size=pixel_size,
+        num_cores=cpu
     )
 
     if not Path("./surface_models").is_dir():

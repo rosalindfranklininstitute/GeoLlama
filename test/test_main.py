@@ -25,6 +25,7 @@ import os
 import tempfile
 import unittest
 import unittest.mock as mock
+import multiprocessing as mp
 
 import numpy as np
 import pandas as pd
@@ -47,28 +48,56 @@ class MainTest(unittest.TestCase):
         pass
 
 
-    def test_check_cli_input(self):
+    def test_check_user_input(self):
         # Test for None path exception handling
         with self.assertRaises(ValueError) as cm:
-            main._check_cli_input(
+            main._check_user_input(
                 path=None,
                 pixel_size=1,
+                num_cores=1,
             )
         self.assertNotEqual(cm.exception, 0)
 
         # Test for non-directory path exception handling
         with self.assertRaises(NotADirectoryError) as cm:
-            main._check_cli_input(
+            main._check_user_input(
                 path="random string",
                 pixel_size=1,
+                num_cores=1,
             )
         self.assertNotEqual(cm.exception, 0)
 
-        # Test for None pixel size exception handling
+        # Tests for wrong pixel size exception handling
         with self.assertRaises(ValueError) as cm:
-            main._check_cli_input(
+            main._check_user_input(
                 path=f"{self.tmpdir.name}/data",
                 pixel_size=None,
+                num_cores=1,
+            )
+        self.assertNotEqual(cm.exception, 0)
+
+        with self.assertRaises(ValueError) as cm:
+            main._check_user_input(
+                path=f"{self.tmpdir.name}/data",
+                pixel_size=-1,
+                num_cores=1,
+            )
+        self.assertNotEqual(cm.exception, 0)
+
+        # Tests for wrong number of cores exception handling
+        with self.assertRaises(ValueError) as cm:
+            main._check_user_input(
+                path=f"{self.tmpdir.name}/data",
+                pixel_size=1,
+                num_cores=1.5,
+            )
+        self.assertNotEqual(cm.exception, 0)
+
+        with self.assertRaises(ValueError) as cm:
+            main._check_user_input(
+                path=f"{self.tmpdir.name}/data",
+                pixel_size=1,
+                num_cores=mp.cpu_count()+1,
             )
         self.assertNotEqual(cm.exception, 0)
 
