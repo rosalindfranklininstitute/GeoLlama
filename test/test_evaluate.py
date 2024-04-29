@@ -63,7 +63,8 @@ class EvaluateTest(unittest.TestCase):
             binning=1,
             cpu=1,
             bandpass=False,
-            autocontrast=True
+            autocontrast=True,
+            adaptive=False,
         )
 
 
@@ -125,7 +126,8 @@ class EvaluateTest(unittest.TestCase):
             binning=1,
             cpu=1,
             bandpass=False,
-            autocontrast=True
+            autocontrast=True,
+            adaptive=False,
         )
         self.assertEqual(len(out), 2)
 

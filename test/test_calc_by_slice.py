@@ -16,7 +16,7 @@
 ## Module             : GeoLlama/test_calc_by_slice ##
 ## Created            : Neville Yee                 ##
 ## Date created       : 02-Oct-2023                 ##
-## Date last modified : 11-Apr-2024                 ##
+## Date last modified : 25-Apr-2024                 ##
 ######################################################
 
 import unittest
@@ -59,11 +59,11 @@ class CalcBySliceTest(unittest.TestCase):
     def test_create_slice_views(self):
         view_zy, view_zx = CBS.create_slice_views(
             volume=self.image_3d,
-            coords=[50, 100, 150],
+            sliding_window_width=10,
         )
 
-        self.assertEqual(view_zy.shape, (100, 300))
-        self.assertEqual(view_zx.shape, (100, 200))
+        self.assertEqual(view_zy.shape, (191, 100, 300))
+        self.assertEqual(view_zx.shape, (291, 100, 200))
 
 
     def test_interpolate_surface(self):
@@ -131,8 +131,7 @@ class CalcBySliceTest(unittest.TestCase):
         (breadth, thickness, angle, num_points,
          surface_t1, surface_t2,
          surface_b1, surface_b2) = CBS.evaluate_slice(
-             slice_coords=[50, 100, 150],
-             volume=self.image_3d,
+             view_input=self.image_2d,
              pixel_size_nm=1.0
          )
 
@@ -150,16 +149,16 @@ class CalcBySliceTest(unittest.TestCase):
         self.assertGreaterEqual(num_points, 0, "Number of features picked must be >= 0.")
 
         self.assertIsInstance(surface_t1, np.ndarray)
-        self.assertEqual(surface_t1.shape, (3,))
+        self.assertEqual(surface_t1.shape, (2,))
 
         self.assertIsInstance(surface_t2, np.ndarray)
-        self.assertEqual(surface_t2.shape, (3,))
+        self.assertEqual(surface_t2.shape, (2,))
 
         self.assertIsInstance(surface_b1, np.ndarray)
-        self.assertEqual(surface_b1.shape, (3,))
+        self.assertEqual(surface_b1.shape, (2,))
 
         self.assertIsInstance(surface_b2, np.ndarray)
-        self.assertEqual(surface_b2.shape, (3,))
+        self.assertEqual(surface_b2.shape, (2,))
 
 
     @unittest.skip("Wrapper for functions")
