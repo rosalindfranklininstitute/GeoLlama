@@ -66,7 +66,7 @@ def _check_user_input(
     if not isinstance(num_cores, int):
         raise ValueError("num_cores (-np) must be an integer.")
     elif not 1 <= num_cores <= mp.cpu_count():
-        raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}.")
+        raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}).")
 
 
 def _read_config(
