@@ -16,7 +16,7 @@
 ## Module             : GeoLlama/test_main ##
 ## Created            : Neville Yee        ##
 ## Date created       : 23-Apr-2024        ##
-## Date last modified : 29-Apr-2024        ##
+## Date last modified : 03-May-2024        ##
 #############################################
 
 
@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 import starfile
 
-from GeoLlama import (main, evaluate)
+from GeoLlama import (main, config, evaluate)
 
 
 class MainTest(unittest.TestCase):
@@ -48,90 +48,12 @@ class MainTest(unittest.TestCase):
         pass
 
 
-    def test_check_user_input(self):
-        # Test for None path exception handling
-        with self.assertRaises(ValueError) as cm:
-            main._check_user_input(
-                path=None,
-                pixel_size=1,
-                num_cores=1,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-        # Test for non-directory path exception handling
-        with self.assertRaises(NotADirectoryError) as cm:
-            main._check_user_input(
-                path="random string",
-                pixel_size=1,
-                num_cores=1,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-        # Tests for wrong pixel size exception handling
-        with self.assertRaises(ValueError) as cm:
-            main._check_user_input(
-                path=f"{self.tmpdir.name}/data",
-                pixel_size=None,
-                num_cores=1,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-        with self.assertRaises(ValueError) as cm:
-            main._check_user_input(
-                path=f"{self.tmpdir.name}/data",
-                pixel_size=-1,
-                num_cores=1,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-        # Tests for wrong number of cores exception handling
-        with self.assertRaises(ValueError) as cm:
-            main._check_user_input(
-                path=f"{self.tmpdir.name}/data",
-                pixel_size=1,
-                num_cores=1.5,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-        with self.assertRaises(ValueError) as cm:
-            main._check_user_input(
-                path=f"{self.tmpdir.name}/data",
-                pixel_size=1,
-                num_cores=mp.cpu_count()+1,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-
-    def test_read_config(self):
-        # Generate default config file
-        os.chdir(f"{self.tmpdir.name}/anlys")
-        main.generate_config()
-
-        # Test if config file is read correctly
-        config = main._read_config("./config.yaml")
-
-        self.assertTrue(len(config), 9)
-        self.assertTrue(config['data_path'], None)
-        self.assertTrue(config['pixel_size_nm'], None)
-        self.assertTrue(config['binning'], 1)
-        self.assertFalse(config['autocontrast'])
-        self.assertFalse(config['adaptive'])
-        self.assertFalse(config['bandpass'])
-        self.assertTrue(config['num_cores'], 1)
-        self.assertTrue(config['output_csv_path'], None)
-        self.assertTrue(config['output_star_path'], None)
-
-
     def test_generate_config(self):
         os.chdir(f"{self.tmpdir.name}/anlys")
 
-        # Test if correct file is generated with default output path
-        main.generate_config()
-        self.assertTrue(os.path.exists("./config.yaml"))
-
-        # Test if correct file is generated with given output path
-        main.generate_config(f"./new_config.yaml")
-        self.assertTrue(os.path.exists("./new_config.yaml"))
+        with mock.patch.object(config, "generate_config") as m:
+            main.generate_config()
+            self.assertTrue(m.called)
 
 
     def test_main(self):
@@ -154,10 +76,10 @@ class MainTest(unittest.TestCase):
 
         with mock.patch.object(evaluate, "eval_batch", return_value=(mock_df, mock_df)) as m:
             main.main(
-                user_path = "../data",
-                pixel_size = 1,
-                out_csv = "./test.csv",
-                out_star = "./test.star",
+                data_path = "../data",
+                pixel_size_nm = 1,
+                output_csv_path = "./test.csv",
+                output_star_path = "./test.star",
             )
 
             # Test if files are created

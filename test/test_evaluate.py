@@ -31,6 +31,7 @@ import pandas as pd
 import mrcfile
 
 from GeoLlama import evaluate as EV
+from GeoLlama import config
 
 
 class EvaluateTest(unittest.TestCase):
@@ -55,16 +56,23 @@ class EvaluateTest(unittest.TestCase):
         with mrcfile.new(self._data_address) as f:
             f.set_data(self._test_data.astype(np.float32))
 
+        self.params = config.objectify_user_input(
+            autocontrast=True,
+            adaptive=False,
+            bandpass=False,
+            data_path=None,
+            num_cores=1,
+            binning=1,
+            pixel_size_nm=1.0,
+            output_csv_path=None,
+            output_star_path=None,
+        )
+
         # Run single analysis to get output for subsequent tests
         os.chdir(self._anlys_folder)
         self._single_out = EV.eval_single(
             fname=self._data_address,
-            pixel_size=1.0,
-            binning=1,
-            cpu=1,
-            bandpass=False,
-            autocontrast=True,
-            adaptive=False,
+            params=self.params
         )
 
 
@@ -122,12 +130,7 @@ class EvaluateTest(unittest.TestCase):
 
         out = EV.eval_batch(
             filelist=filelist,
-            pixel_size=1.0,
-            binning=1,
-            cpu=1,
-            bandpass=False,
-            autocontrast=True,
-            adaptive=False,
+            params=self.params
         )
         self.assertEqual(len(out), 2)
 
