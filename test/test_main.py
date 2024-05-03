@@ -16,7 +16,7 @@
 ## Module             : GeoLlama/test_main ##
 ## Created            : Neville Yee        ##
 ## Date created       : 23-Apr-2024        ##
-## Date last modified : 23-Apr-2024        ##
+## Date last modified : 03-May-2024        ##
 #############################################
 
 
@@ -25,12 +25,13 @@ import os
 import tempfile
 import unittest
 import unittest.mock as mock
+import multiprocessing as mp
 
 import numpy as np
 import pandas as pd
 import starfile
 
-from GeoLlama import (main, evaluate)
+from GeoLlama import (main, config, evaluate)
 
 
 class MainTest(unittest.TestCase):
@@ -47,30 +48,12 @@ class MainTest(unittest.TestCase):
         pass
 
 
-    def test_check_cli_input(self):
-        # Test for None path exception handling
-        with self.assertRaises(ValueError) as cm:
-            main._check_cli_input(
-                path=None,
-                pixel_size=1,
-            )
-        self.assertNotEqual(cm.exception, 0)
+    def test_generate_config(self):
+        os.chdir(f"{self.tmpdir.name}/anlys")
 
-        # Test for non-directory path exception handling
-        with self.assertRaises(NotADirectoryError) as cm:
-            main._check_cli_input(
-                path="random string",
-                pixel_size=1,
-            )
-        self.assertNotEqual(cm.exception, 0)
-
-        # Test for None pixel size exception handling
-        with self.assertRaises(ValueError) as cm:
-            main._check_cli_input(
-                path=f"{self.tmpdir.name}/data",
-                pixel_size=None,
-            )
-        self.assertNotEqual(cm.exception, 0)
+        with mock.patch.object(config, "generate_config") as m:
+            main.generate_config()
+            self.assertTrue(m.called)
 
 
     def test_main(self):
@@ -93,10 +76,10 @@ class MainTest(unittest.TestCase):
 
         with mock.patch.object(evaluate, "eval_batch", return_value=(mock_df, mock_df)) as m:
             main.main(
-                user_path = "../data",
-                pixel_size = 1,
-                out_csv = "./test.csv",
-                out_star = "./test.star",
+                data_path = "../data",
+                pixel_size_nm = 1,
+                output_csv_path = "./test.csv",
+                output_star_path = "./test.star",
             )
 
             # Test if files are created

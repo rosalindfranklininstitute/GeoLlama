@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.evaluate  ##
 ## Created            : Neville Yee        ##
 ## Date created       : 05-Oct-2023        ##
-## Date last modified : 19-Apr-2024        ##
+## Date last modified : 03-May-2024        ##
 #############################################
 
 
@@ -32,6 +32,7 @@ import pandas as pd
 from GeoLlama.prog_bar import (prog_bar, clear_tasks)
 from GeoLlama import io
 from GeoLlama import calc_by_slice as CBS
+from GeoLlama import objects
 
 mpl.use("Agg")
 
@@ -117,22 +118,14 @@ def save_text_model(surface_info, save_path, binning):
 
 def eval_single(
         fname: str,
-        pixel_size: float,
-        binning: int,
-        cpu: int,
-        bandpass: bool,
-        autocontrast: bool,
+        params: objects.Config
 ):
     """
     Evaluate geometry of a single tomogram given source file
 
     Args:
     fname (str) : Path to tomogram file
-    pixel_size (float) : Pixel size of tomogram in nm
-    binning (int) : Internal binning factor for GeoLlama evaluation
-    cpu (int) : Number of cores used for parallel calculations
-    bandpass (bool) : Whether to include bandpass as a preprocessing step
-    autocontrast (bool) : Whether to include autocontrast as a preprocessing step
+    params (Config) : Config object holding all parameters
 
     Returns:
     ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
@@ -140,24 +133,24 @@ def eval_single(
 
     tomo, pixel_size = io.read_mrc(
         fname=fname,
-        px_size_nm=pixel_size,
-        downscale=binning
+        px_size_nm=params.pixel_size_nm,
+        downscale=params.binning
     )
 
     yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces = CBS.evaluate_full_lamella(
-        volume=CBS.filter_bandpass(tomo) if bandpass else tomo,
-        pixel_size_nm=pixel_size,
-        cpu=cpu,
-        autocontrast=autocontrast,
+        volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
+        pixel_size_nm=params.pixel_size_nm,
+        cpu=params.num_cores,
+        autocontrast=params.autocontrast,
     )
 
     save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
-                binning=binning
+                binning=params.binning
     )
     save_text_model(surface_info=surfaces,
                     save_path=f"./surface_models/{fname.stem}.txt",
-                    binning=binning
+                    binning=params.binning
     )
 
     return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces)
@@ -165,22 +158,14 @@ def eval_single(
 
 def eval_batch(
         filelist: list,
-        pixel_size: float,
-        binning: int,
-        cpu: int,
-        bandpass: bool,
-        autocontrast: bool,
+        params: objects.Config
 ) -> (pd.DataFrame, pd.DataFrame):
     """
     Evaluate geometry of tomograms given path to folder containing tomograms, then output statistics as pandas DataFrames.
 
     Args:
     filelist (list) : List containing paths to tomograms
-    pixel_size (float) : Pixel size of tomogram in nm
-    binning (int) : Internal binning factor for GeoLlama evaluation
-    cpu (int) : Number of cores used for parallel calculations
-    bandpass (bool) : Whether to include bandpass as a preprocessing step
-    autocontrast (bool) : Whether to include autocontrast as a preprocessing step
+    params (Config) : Config object holding all parameters
 
     Returns:
     DataFrame, DataFrame
@@ -203,11 +188,7 @@ def eval_batch(
         for tomo in p.track(filelist, total=len(filelist)):
             _, _, yz_mean, xz_mean, yz_std, xz_std, _ = eval_single(
                 fname=tomo,
-                pixel_size=pixel_size,
-                binning=binning,
-                cpu=cpu,
-                bandpass=bandpass,
-                autocontrast=autocontrast,
+                params=params
             )
 
             thickness_mean_list.append(yz_mean[1])
