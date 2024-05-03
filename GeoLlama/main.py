@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.main  ##
 ## Created            : Neville Yee    ##
 ## Date created       : 03-Oct-2023    ##
-## Date last modified : 29-Apr-2024    ##
+## Date last modified : 03-May-2024    ##
 #########################################
 
 import os
@@ -145,14 +145,10 @@ def main(
     if not Path("./surface_models").is_dir():
         Path("surface_models").mkdir()
 
-    filelist = evaluate.find_files(path=user_path)
+    filelist = evaluate.find_files(path=params.data_path)
     raw_df, show_df = evaluate.eval_batch(
         filelist=filelist,
-        pixel_size=pixel_size,
-        binning=binning,
-        cpu=cpu,
-        bandpass=bandpass,
-        autocontrast=autocontrast,
+        params=params
     )
 
     # Print overall statistics
