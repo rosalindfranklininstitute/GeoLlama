@@ -158,10 +158,10 @@ def main(
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
 
-    if out_csv is not None:
-        raw_df.to_csv(out_csv, index=False)
-    if out_star is not None:
-        starfile.write(raw_df, out_star, overwrite=True)
+    if params.output_csv_path is not None:
+        raw_df.to_csv(params.output_csv_path, index=False)
+    if params.output_star_path is not None:
+        starfile.write(raw_df, params.output_star_path, overwrite=True)
 
     if printout:
         print(tabulate(show_df,

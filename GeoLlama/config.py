@@ -122,7 +122,7 @@ def objectify_user_input(
     """
     params = objects.Config()
     for key in params.__dict__.keys():
-        params.__setattr__(key, locals[key])
+        params.__setattr__(key, locals()[key])
 
     return params
 
