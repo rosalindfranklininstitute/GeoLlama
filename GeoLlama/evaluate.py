@@ -26,6 +26,7 @@ import logging
 from rich.logging import RichHandler
 
 import numpy as np
+from scipy.stats import sem
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -145,7 +146,7 @@ def eval_single(
         downscale=params.binning
     )
 
-    yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces = CBS.evaluate_full_lamella(
+    yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
         volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
         pixel_size_nm=params.pixel_size_nm,
         cpu=params.num_cores,
@@ -153,15 +154,15 @@ def eval_single(
     )
 
     # Adaptive mode
-    if adaptive:
-        anomalous = (yz_std[1] > 30 or yz_std[2] > 10)
+    if params.adaptive:
+        anomalous = (yz_sem[1] > 20 or yz_sem[2] > 5)
         if anomalous:
-            logging.info(f"Adaptive mode triggered for {fname.name}.")
-            yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces = CBS.evaluate_full_lamella(
-                volume=CBS.filter_bandpass(tomo) if bandpass else tomo,
-                pixel_size_nm=pixel_size,
-                cpu=cpu,
-                autocontrast=autocontrast,
+            logging.info(f"Adaptive mode triggered for {fname.name}. \nSEM of thickness={yz_sem[1]:.3f}, SEM of xtilt={yz_sem[2]:3f}.")
+            yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
+                volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
+                pixel_size_nm=params.pixel_size_nm,
+                cpu=params.num_cores,
+                autocontrast=params.autocontrast,
                 step_pct=1.25,
             )
 
@@ -174,7 +175,7 @@ def eval_single(
                     binning=params.binning
     )
 
-    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_std, xz_std, surfaces)
+    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces)
 
 
 def eval_batch(
@@ -196,9 +197,9 @@ def eval_batch(
     xtilt_mean_list = []
     ytilt_mean_list = []
 
-    thickness_std_list = []
-    xtilt_std_list = []
-    ytilt_std_list = []
+    thickness_sem_list = []
+    xtilt_sem_list = []
+    ytilt_sem_list = []
 
     thickness_list = []
     xtilt_list = []
@@ -207,7 +208,7 @@ def eval_batch(
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist, total=len(filelist)):
-            _, _, yz_mean, xz_mean, yz_std, xz_std, _ = eval_single(
+            _, _, yz_mean, xz_mean, yz_sem, xz_sem, _ = eval_single(
                 fname=tomo,
                 params=params
             )
@@ -216,30 +217,30 @@ def eval_batch(
             xtilt_mean_list.append(yz_mean[2])
             ytilt_mean_list.append(xz_mean[2])
 
-            thickness_std_list.append(yz_std[1])
-            xtilt_std_list.append(yz_std[2])
-            ytilt_std_list.append(xz_std[2])
+            thickness_sem_list.append(yz_sem[1])
+            xtilt_sem_list.append(yz_sem[2])
+            ytilt_sem_list.append(xz_sem[2])
 
     for idx, _ in enumerate(filelist):
-        thickness_list.append(f"{thickness_mean_list[idx]:.2f} +/- {thickness_std_list[idx]:.2f}")
-        xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_std_list[idx]:.2f}")
-        ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_std_list[idx]:.2f}")
+        thickness_list.append(f"{thickness_mean_list[idx]:.2f} +/- {thickness_sem_list[idx]:.2f}")
+        xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_sem_list[idx]:.2f}")
+        ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_sem_list[idx]:.2f}")
 
     # Detect anomalies
     xtilt_mean_of_mean = np.array(xtilt_mean_list).mean()
-    xtilt_mean_std = np.std(np.array(xtilt_mean_list))
+    xtilt_mean_sem = sem(np.array(xtilt_mean_list))
 
-    thick_anomaly = np.array(thickness_std_list) > 30
-    xtilt_anomaly = np.array(xtilt_std_list) > 10
+    thick_anomaly = np.array(thickness_sem_list) > 20
+    xtilt_anomaly = np.array(xtilt_sem_list) > 5
 
     raw_data = pd.DataFrame(
         {"filename": [f.name for f in filelist],
          "Mean_thickness_nm": thickness_mean_list,
-         "Thickness_s.d._nm": thickness_std_list,
+         "Thickness_s.d._nm": thickness_sem_list,
          "Mean_X-tilt_degs": xtilt_mean_list,
-         "X-tilt_s.d._degs": xtilt_std_list,
+         "X-tilt_s.d._degs": xtilt_sem_list,
          "Mean_Y-tilt_degs": ytilt_mean_list,
-         "Y-tilt_s.d._degs": ytilt_std_list,
+         "Y-tilt_s.d._degs": ytilt_sem_list,
          "thickness_anomaly": thick_anomaly,
          "xtilt_anomaly": xtilt_anomaly,
         }

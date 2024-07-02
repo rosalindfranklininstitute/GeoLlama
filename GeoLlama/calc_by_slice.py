@@ -35,7 +35,7 @@ from skimage.filters import difference_of_gaussians as DoG
 from sklearn.cluster import (DBSCAN, OPTICS)
 from sklearn.decomposition import PCA
 
-from scipy.stats import mode, chi2
+from scipy.stats import mode, chi2, t, sem
 import scipy.interpolate as spin
 from icecream import ic
 
@@ -271,14 +271,19 @@ def evaluate_slice(view_input: npt.NDArray[any],
     centroid_s1 = mask_s1.mean(axis=0)
 
     # Step 2: Use Mahalanobis distance to remove potential outliers
-    covar_inv = np.linalg.inv(np.cov(mask_s1.T))
-    pts_deviation = mask_s1 - centroid_s1
-    maha_dist = np.dot(np.dot(pts_deviation, covar_inv), pts_deviation.T).diagonal()
-    p_val = 1 - chi2.cdf(np.sqrt(maha_dist), 1)
-    mask_s2 = np.delete(mask_s1, np.argwhere(p_val<0.07), axis=0)
+    jackknife_dist = np.empty(len(mask_s1))
+    for idx in range(len(mask_s1)):
+        temp = np.delete(mask_s1, idx, axis=0)
+        S_inv = np.linalg.inv(np.cov(temp.T))
+        diffs = (mask_s1[idx] - temp.mean(axis=0))[np.newaxis, :]
+        jackknife_dist[idx] = np.sqrt( (diffs @ S_inv.T @ diffs.T).diagonal() )
+
+    conf_limit = t.interval(confidence=0.999, df=2,
+                            loc=jackknife_dist.mean(), scale=sem(jackknife_dist))[1]
+    mask_s2 = np.squeeze(mask_s1[np.argwhere(jackknife_dist<=conf_limit)], axis=1)
 
     # Step 3: Use distance-based clustering to find sample region
-    clusters = DBSCAN(eps=15, min_samples=15).fit_predict(mask_s2)
+    clusters = DBSCAN(eps=15, min_samples=1000).fit_predict(mask_s2)
     mask_s3_args = np.argwhere(clusters==mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
@@ -423,8 +428,8 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
     # Stat aggregation
     yz_mean = yz_full_stats_refined.mean(axis=0)
     xz_mean = xz_full_stats_refined.mean(axis=0)
-    yz_std = yz_full_stats_refined.std(axis=0)
-    xz_std = xz_full_stats_refined.std(axis=0)
+    yz_sem = sem(yz_full_stats_refined, axis=0)
+    xz_sem = sem(xz_full_stats_refined, axis=0)
 
     xx_top, yy_top, surface_interp_top = interpolate_surface(
         np.vstack((yz_top_contour_1, yz_top_contour_2))
@@ -441,6 +446,6 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
 
     return (yz_full_stats, xz_full_stats,
             yz_mean, xz_mean,
-            yz_std, xz_std,
+            yz_sem, xz_sem,
             surfaces
     )

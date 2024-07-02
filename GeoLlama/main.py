@@ -65,10 +65,6 @@ def main(
             bool,
             typer.Option(help="Apply autocontrast to slices prior to evaluation. Recommended.")
         ] = False,
-        adaptive: Annotated[
-            bool,
-            typer.Option(help="Re-evaluate tomogram with doubled sampling if anomaly detected. Warning: using adaptive will result in an increase in overall execution time."),
-        ] = False,
         bandpass: Annotated[
             bool,
             typer.Option(help="Apply bandpass filter to tomograms prior to evaluation.")
