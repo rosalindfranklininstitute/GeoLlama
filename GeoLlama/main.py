@@ -152,6 +152,19 @@ def main(
         params=params
     )
 
+    # Create bash file for IMOD point2model conversion
+    model_filelist = Path("./surface_models/").glob("*.txt")
+    text = f"""#!/bin/bash/
+
+for file in {' '.join([f.stem for f in filelist])}
+do
+\tpoint2model -input ${{file}}.txt -output ${{file}}.mdl -open -thick 3
+done
+    """
+    with open("./surface_models/p2m_convert.sh", "w") as f:
+        f.write(text)
+
+
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
     thickness_std_of_mean = raw_df['Mean_thickness_nm'].std()
