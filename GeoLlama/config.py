@@ -48,8 +48,8 @@ autocontrast: False
 adaptive: False
 bandpass: False
 num_cores: 1
-output_csv_path: None
-output_star_path: None
+output_csv_path: null
+output_star_path: null
 """
 
     yaml = ruamel.yaml.YAML()
