@@ -107,13 +107,13 @@ def save_text_model(surface_info, save_path, binning):
     """
     xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, model_top, model_bottom = surface_info
 
-    contour_top = np.full((len(model_top),1), 1, dtype=int)
+    contour_top = np.tile(range(1, len(model_top)//2+1), 2)[:, np.newaxis] #np.full((len(model_top),1), 1, dtype=int)
     full_list_top = np.hstack(
         (contour_top, model_top*binning),
         dtype=object
     )
 
-    contour_bottom = np.full((len(model_bottom),1), 2, dtype=int)
+    contour_bottom = np.tile(range(len(model_top)//2+1, len(model_bottom)+1), 2)[:, np.newaxis] #np.full((len(model_bottom),1), 2, dtype=int)
     full_list_bottom = np.hstack(
         (contour_bottom, model_bottom*binning),
         dtype=object
@@ -140,7 +140,7 @@ def eval_single(
     ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
     """
 
-    tomo, pixel_size = io.read_mrc(
+    tomo, binned_pixel_size = io.read_mrc(
         fname=fname,
         px_size_nm=params.pixel_size_nm,
         downscale=params.binning
@@ -148,7 +148,7 @@ def eval_single(
 
     yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
         volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
-        pixel_size_nm=params.pixel_size_nm,
+        pixel_size_nm=binned_pixel_size,
         cpu=params.num_cores,
         autocontrast=params.autocontrast,
     )
@@ -160,7 +160,7 @@ def eval_single(
             logging.info(f"Adaptive mode triggered for {fname.name}. \nSEM of thickness={yz_sem[1]:.3f}, SEM of xtilt={yz_sem[2]:3f}.")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
-                pixel_size_nm=params.pixel_size_nm,
+                pixel_size_nm=binned_pixel_size,
                 cpu=params.num_cores,
                 autocontrast=params.autocontrast,
                 step_pct=1.25,
@@ -236,11 +236,11 @@ def eval_batch(
     raw_data = pd.DataFrame(
         {"filename": [f.name for f in filelist],
          "Mean_thickness_nm": thickness_mean_list,
-         "Thickness_s.d._nm": thickness_sem_list,
+         "Thickness_SEM_nm": thickness_sem_list,
          "Mean_X-tilt_degs": xtilt_mean_list,
-         "X-tilt_s.d._degs": xtilt_sem_list,
+         "X-tilt_SEM_degs": xtilt_sem_list,
          "Mean_Y-tilt_degs": ytilt_mean_list,
-         "Y-tilt_s.d._degs": ytilt_sem_list,
+         "Y-tilt_SEM_degs": ytilt_sem_list,
          "thickness_anomaly": thick_anomaly,
          "xtilt_anomaly": xtilt_anomaly,
         }
