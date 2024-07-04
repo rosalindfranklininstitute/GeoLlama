@@ -36,10 +36,41 @@ from sklearn.cluster import (DBSCAN, OPTICS)
 from sklearn.decomposition import PCA
 
 from scipy.stats import mode, chi2, t, sem
+from scipy.spatial import ConvexHull as CH
 import scipy.interpolate as spin
 from icecream import ic
 
 import matplotlib.pyplot as plt
+
+
+def _calc_centroid(points,
+) -> npt.NDArray[any]:
+    """
+    Calculates the geometrical centroid of convex hull of given points.
+    Should eliminate skewing due to non-uniform distribution (local density)
+
+    Args:
+    points (ndarray) : coordinates of input point cloud
+
+    Returns:
+    ndarray
+    """
+    # Calculate vertices of convex hull
+    hull = CH(points)
+    vertices = points[hull.vertices]
+
+    # Calculate centroid (first moment of area)
+    x = vertices[:, 0]
+    y = vertices[:, 1]
+
+    N = range(len(vertices)-1)
+    trapezoid_areas = np.array([(x[i]-x[i+1])*(y[i]+x[i+1])*0.5 for i in N])
+
+    My = np.array([(x[i]+x[i+1])*0.5 for i in N]) * trapezoid_areas
+    Mx = np.array([(y[i]+y[i+1])*0.5 for i in N]) * trapezoid_areas
+    centroid = np.array([My.sum(), Mx.sum()]) / trapezoid_areas.sum()
+
+    return centroid
 
 
 def filter_bandpass(image: npt.NDArray[any],
@@ -274,8 +305,9 @@ def evaluate_slice(view_input: npt.NDArray[any],
     jackknife_dist = np.empty(len(mask_s1))
     for idx in range(len(mask_s1)):
         temp = np.delete(mask_s1, idx, axis=0)
+        temp_centroid = temp.mean(axis=0)
         S_inv = np.linalg.inv(np.cov(temp.T))
-        diffs = (mask_s1[idx] - temp.mean(axis=0))[np.newaxis, :]
+        diffs = (mask_s1[idx] - temp_centroid)[np.newaxis, :]
         jackknife_dist[idx] = np.sqrt( (diffs @ S_inv.T @ diffs.T).diagonal() )
 
     conf_limit = t.interval(confidence=0.999, df=2,
@@ -288,14 +320,14 @@ def evaluate_slice(view_input: npt.NDArray[any],
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
     # Skip slice if no pixels masked
-    centroid_s3 = mask_s3.mean(axis=0)
+    centroid_s3 = _calc_centroid(mask_s3)
 
     # Step 4: Use PCA to find best rectangle fits
     pca = PCA(n_components=2)
     pca.fit(mask_s3)
     eigenvecs = pca.components_
     eigenvals = np.sqrt(pca.explained_variance_)
-    rectangle_dims = eigenvals * 2.5      # 3 times SD to cover nearly all points
+    rectangle_dims = eigenvals * 3      # 3 times SD to cover nearly all points
 
     # Determine breadth (long semi-minor) axis
     breadth_axis = np.argmin(np.abs(eigenvecs[:, 0]))
