@@ -44,8 +44,8 @@ pixel_size_nm: None
 
 # Optional parameters
 binning: 1
-autocontrast: False
-adaptive: False
+autocontrast: True
+adaptive: True
 bandpass: False
 num_cores: 1
 output_csv_path: null
