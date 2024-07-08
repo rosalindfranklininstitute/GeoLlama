@@ -155,9 +155,9 @@ def eval_single(
 
     # Adaptive mode
     if params.adaptive:
-        anomalous = (yz_sem[1] > 20 or yz_sem[2] > 5)
+        anomalous = (yz_mean[1] > 350 or yz_sem[1] > 20 or yz_sem[2] > 5)
         if anomalous:
-            logging.info(f"Adaptive mode triggered for {fname.name}. \nSEM of thickness={yz_sem[1]:.3f}, SEM of xtilt={yz_sem[2]:3f}.")
+            logging.info(f"Adaptive mode triggered for {fname.name}. \nmean thickness={yz_mean[1]:.3f}, SEM of thickness={yz_sem[1]:.3f}, SEM of xtilt={yz_sem[2]:3f}.")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
                 pixel_size_nm=binned_pixel_size,
@@ -230,7 +230,7 @@ def eval_batch(
     xtilt_mean_of_mean = np.array(xtilt_mean_list).mean()
     xtilt_mean_sem = sem(np.array(xtilt_mean_list))
 
-    thick_anomaly = np.array(thickness_sem_list) > 20
+    thick_anomaly = np.logical_or(np.array(thickness_sem_list) > 20, np.array(thickness_mean_list) > 350)
     xtilt_anomaly = np.array(xtilt_sem_list) > 5
 
     raw_data = pd.DataFrame(
