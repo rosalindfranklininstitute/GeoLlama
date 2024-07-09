@@ -314,6 +314,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
 
     # Centralise lamella centroid to middle of slice along long axis
     lamella_centre = centroid_s3
+    lamella_to_slice_dist = np.linalg.norm(lamella_centre - 0.5*np.array(view.shape)) * 200 / max(view.shape)
 
     extrema = np.array(view.shape) - 1
     ref_pt1 = lamella_centre + cell_vecs[1]
@@ -324,7 +325,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
     bottom_pt1 = lamella_centre - cell_vecs[1] + cell_vecs[0]
     bottom_pt2 = lamella_centre - cell_vecs[1] - cell_vecs[0]
 
-    return (slice_breadth, slice_thickness, angle, num_points,
+    return (lamella_to_slice_dist, slice_breadth, slice_thickness, angle, num_points,
             top_pt1, top_pt2, bottom_pt1, bottom_pt2)
 
 
@@ -379,12 +380,12 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
         )
         yz_output = np.array(p.map(f, zy_stack_assessment), dtype=object)
 
-    yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//8, 8))
-    yz_full_stats = np.array(yz_output[:, :4], dtype=float)
-    yz_surface_top_1_2d = np.concatenate(yz_output[:,4]).ravel().reshape(len(yz_output), 2)
-    yz_surface_top_2_2d = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output), 2)
-    yz_surface_bottom_1_2d = np.concatenate(yz_output[:,6]).ravel().reshape(len(yz_output), 2)
-    yz_surface_bottom_2_2d = np.concatenate(yz_output[:,7]).ravel().reshape(len(yz_output), 2)
+    yz_output = np.concatenate(yz_output).ravel().reshape((yz_output.size//9, 9))
+    yz_full_stats = np.array(yz_output[:, :5], dtype=float)
+    yz_surface_top_1_2d = np.concatenate(yz_output[:,5]).ravel().reshape(len(yz_output), 2)
+    yz_surface_top_2_2d = np.concatenate(yz_output[:,6]).ravel().reshape(len(yz_output), 2)
+    yz_surface_bottom_1_2d = np.concatenate(yz_output[:,7]).ravel().reshape(len(yz_output), 2)
+    yz_surface_bottom_2_2d = np.concatenate(yz_output[:,8]).ravel().reshape(len(yz_output), 2)
 
     yz_surface_top_1 = np.insert(yz_surface_top_1_2d, 1, zy_slice_list, axis=1)
     yz_surface_top_2 = np.insert(yz_surface_top_2_2d, 1, zy_slice_list, axis=1)
@@ -419,17 +420,17 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
         )
         xz_output = np.array(p.map(f, zx_stack_assessment), dtype=object)
 
-    xz_full_stats = np.array(xz_output[:, :4], dtype=float)
+    xz_full_stats = np.array(xz_output[:, :5], dtype=float)
 
-    xz_remove_empty = np.array([s for s in xz_full_stats if s[3]>0])
-    xz_thres = otsu(xz_remove_empty[:, 3])
-    xz_full_stats_refined = np.array([s for s in xz_remove_empty if s[3]>xz_thres])
+    # xz_remove_empty = np.array([s for s in xz_full_stats if s[3]>0])
+    # xz_thres = otsu(xz_remove_empty[:, 3])
+    # xz_full_stats_refined = np.array([s for s in xz_remove_empty if s[3]>xz_thres])
 
     # Stat aggregation
     yz_mean = yz_full_stats_refined.mean(axis=0)
-    xz_mean = xz_full_stats_refined.mean(axis=0)
+    xz_mean = xz_full_stats.mean(axis=0)
     yz_sem = sem(yz_full_stats_refined, axis=0)
-    xz_sem = sem(xz_full_stats_refined, axis=0)
+    xz_sem = sem(xz_full_stats, axis=0)
 
     xx_top, yy_top, surface_interp_top = interpolate_surface(
         np.vstack((yz_top_contour_1, yz_top_contour_2))

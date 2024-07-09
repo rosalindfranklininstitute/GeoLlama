@@ -155,9 +155,9 @@ def eval_single(
 
     # Adaptive mode
     if params.adaptive:
-        anomalous = (yz_mean[1] > 350 or yz_sem[1] > 20 or yz_sem[2] > 5)
+        anomalous = (yz_mean[2] > 350 or yz_sem[2] > 20 or yz_sem[3] > 5)
         if anomalous:
-            logging.info(f"Adaptive mode triggered for {fname.name}. \nmean thickness={yz_mean[1]:.3f}, SEM of thickness={yz_sem[1]:.3f}, SEM of xtilt={yz_sem[2]:3f}.")
+            logging.info(f"Adaptive mode triggered for {fname.name}. \nmean thickness={yz_mean[2]:.3f}, SEM of thickness={yz_sem[2]:.3f}, SEM of xtilt={yz_sem[3]:3f}.")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
                 pixel_size_nm=binned_pixel_size,
@@ -193,14 +193,17 @@ def eval_batch(
     DataFrame, DataFrame
     """
 
+    drift_mean_list = []
     thickness_mean_list = []
     xtilt_mean_list = []
     ytilt_mean_list = []
 
+    drift_sem_list = []
     thickness_sem_list = []
     xtilt_sem_list = []
     ytilt_sem_list = []
 
+    drift_list = []
     thickness_list = []
     xtilt_list = []
     ytilt_list = []
@@ -213,15 +216,18 @@ def eval_batch(
                 params=params
             )
 
-            thickness_mean_list.append(yz_mean[1])
-            xtilt_mean_list.append(yz_mean[2])
-            ytilt_mean_list.append(xz_mean[2])
+            drift_mean_list.append(yz_mean[0])
+            thickness_mean_list.append(yz_mean[2])
+            xtilt_mean_list.append(yz_mean[3])
+            ytilt_mean_list.append(xz_mean[3])
 
-            thickness_sem_list.append(yz_sem[1])
-            xtilt_sem_list.append(yz_sem[2])
-            ytilt_sem_list.append(xz_sem[2])
+            drift_sem_list.append(yz_sem[0])
+            thickness_sem_list.append(yz_sem[2])
+            xtilt_sem_list.append(yz_sem[3])
+            ytilt_sem_list.append(xz_sem[3])
 
     for idx, _ in enumerate(filelist):
+        drift_list.append(f"{drift_mean_list[idx]:.2f} +/- {drift_sem_list[idx]:.2f}")
         thickness_list.append(f"{thickness_mean_list[idx]:.2f} +/- {thickness_sem_list[idx]:.2f}")
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_sem_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_sem_list[idx]:.2f}")
@@ -241,6 +247,8 @@ def eval_batch(
          "X-tilt_SEM_degs": xtilt_sem_list,
          "Mean_Y-tilt_degs": ytilt_mean_list,
          "Y-tilt_SEM_degs": ytilt_sem_list,
+         "Mean_drift_perc": drift_mean_list,
+         "Drift_SEM_perc": drift_sem_list,
          "thickness_anomaly": thick_anomaly,
          "xtilt_anomaly": xtilt_anomaly,
         }
@@ -251,6 +259,7 @@ def eval_batch(
          "Thickness (nm)": thickness_list,
          "X-tilt (degs)": xtilt_list,
          "Y-tilt (degs)": ytilt_list,
+         "Centroid drift (%)": drift_list,
          "thickness_anomaly": thick_anomaly,
          "xtilt_anomaly": xtilt_anomaly,
         }
