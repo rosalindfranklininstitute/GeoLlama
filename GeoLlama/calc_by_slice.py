@@ -295,7 +295,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
     pca.fit(mask_s3)
     eigenvecs = pca.components_
     eigenvals = np.sqrt(pca.explained_variance_)
-    rectangle_dims = eigenvals * 2.5      # 3 times SD to cover nearly all points
+    rectangle_dims = eigenvals * 3      # 3 times SD to cover nearly all points
 
     # Determine breadth (long semi-minor) axis
     breadth_axis = np.argmin(np.abs(eigenvecs[:, 0]))
@@ -315,10 +315,6 @@ def evaluate_slice(view_input: npt.NDArray[any],
     # Centralise lamella centroid to middle of slice along long axis
     lamella_centre = centroid_s3
     lamella_to_slice_dist = np.linalg.norm(lamella_centre - 0.5*np.array(view.shape)) * 200 / max(view.shape)
-
-    extrema = np.array(view.shape) - 1
-    ref_pt1 = lamella_centre + cell_vecs[1]
-    ref_pt2 = lamella_centre - cell_vecs[1]
 
     top_pt1 = lamella_centre + cell_vecs[1] + cell_vecs[0]
     top_pt2 = lamella_centre + cell_vecs[1] - cell_vecs[0]
