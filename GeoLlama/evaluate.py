@@ -23,6 +23,7 @@
 from pathlib import Path
 import typing
 import logging
+import functools
 from rich.logging import RichHandler
 
 import numpy as np
@@ -155,7 +156,7 @@ def eval_single(
 
     # Adaptive mode
     if params.adaptive:
-        anomalous = (yz_mean[2] > 350 or yz_sem[2] > 20 or yz_sem[3] > 5)
+        anomalous = (yz_mean[2] > 300 or yz_mean[2] < 120 or yz_sem[2] > 20 or yz_sem[3] > 5)
         if anomalous:
             logging.info(f"Adaptive mode triggered for {fname.name}. \nmean thickness={yz_mean[2]:.3f}, SEM of thickness={yz_sem[2]:.3f}, SEM of xtilt={yz_sem[3]:3f}.")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
@@ -236,7 +237,11 @@ def eval_batch(
     xtilt_mean_of_mean = np.array(xtilt_mean_list).mean()
     xtilt_mean_sem = sem(np.array(xtilt_mean_list))
 
-    thick_anomaly = np.logical_or(np.array(thickness_sem_list) > 20, np.array(thickness_mean_list) > 350)
+    thick_anomaly = functools.reduce(np.logical_or, (
+        np.array(thickness_mean_list) < 120,
+        np.array(thickness_mean_list) > 300,
+        np.array(thickness_sem_list) > 20
+    ) )
     xtilt_anomaly = np.array(xtilt_sem_list) > 5
 
     raw_data = pd.DataFrame(
