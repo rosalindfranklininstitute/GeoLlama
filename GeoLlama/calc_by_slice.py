@@ -105,8 +105,8 @@ def create_slice_views(volume: npt.NDArray[any],
     sliding_zx = swv(volume, sliding_window_width, axis=2)
 
     # Create views for calculation using sliding window views
-    view_zy_raw = sliding_zy.sum(axis=-1) * sliding_zy.std(axis=-1)
-    view_zx_raw = sliding_zx.sum(axis=-1) * sliding_zx.std(axis=-1)
+    view_zy_raw = sliding_zy.std(axis=-1)
+    view_zx_raw = sliding_zx.std(axis=-1)
 
     # Swap relevant axes to 0 for downstream processes
     view_zy = np.moveaxis(view_zy_raw, 1, 0)
