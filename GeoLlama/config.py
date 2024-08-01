@@ -50,6 +50,7 @@ bandpass: False
 num_cores: 1
 output_csv_path: null
 output_star_path: null
+output_mask: True
 """
 
     yaml = ruamel.yaml.YAML()
@@ -102,6 +103,7 @@ def objectify_user_input(
         num_cores: typing.Optional[int],
         output_csv_path: typing.Optional[str],
         output_star_path: typing.Optional[str],
+        output_mask: typing.Optional[bool],
 ) -> objects.Config:
     """
     Objectifying user provided input as a Config object
@@ -114,8 +116,9 @@ def objectify_user_input(
     pixel_size (float) : Tomogram pixel size in nm
     binning (int) : Binning factor for tomogram evaluation
     cpu (int) : Number of CPUs used
-    out_csv (str) : Output path for CSV file
-    out_star (str) : Output path for STAR file
+    output_csv (str) : Output path for CSV file
+    output_star (str) : Output path for STAR file
+    output_mask (bool) : Produce 3D mask of estimated lamella region (same shape as input tomogram)
 
     Returns:
     Config
