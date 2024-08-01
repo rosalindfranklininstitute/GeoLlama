@@ -26,6 +26,7 @@ import logging
 import functools
 from rich.logging import RichHandler
 
+
 import numpy as np
 from scipy.stats import sem
 import matplotlib as mpl
@@ -156,9 +157,14 @@ def eval_single(
 
     # Adaptive mode
     if params.adaptive:
-        anomalous = (yz_mean[2] > 300 or yz_mean[2] < 120 or yz_sem[2] > 20 or yz_sem[3] > 5)
-        if anomalous:
-            logging.info(f"Adaptive mode triggered for {fname.name}. \nmean thickness={yz_mean[2]:.3f}, SEM of thickness={yz_sem[2]:.3f}, SEM of xtilt={yz_sem[3]:3f}.")
+        criteria = [
+            yz_mean[0] > 100./3,
+            yz_sem[0] > 5,
+            yz_sem[2] > 20,
+            yz_sem[3] > 5
+        ]
+        if np.any(criteria):
+            logging.info(f"Adaptive mode triggered for {fname.name}. \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
                 pixel_size_nm=binned_pixel_size,
@@ -166,6 +172,7 @@ def eval_single(
                 autocontrast=params.autocontrast,
                 step_pct=1.25,
             )
+            logging.info(f"Final stats after increased sampling: \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %\n")
 
     save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
