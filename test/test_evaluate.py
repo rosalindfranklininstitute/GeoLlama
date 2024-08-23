@@ -76,6 +76,15 @@ class EvaluateTest(unittest.TestCase):
             params=self.params
         )
 
+        # Set up a dummy Lamella object
+        self._my_lamella = EV.Lamella(
+            centroid = [50, 50, 50],
+            breadth = 100,
+            thickness = 50,
+            xtilt = 0,
+            ytilt = 0
+        )
+
 
     def setUp(self):
         pass
@@ -140,6 +149,23 @@ class EvaluateTest(unittest.TestCase):
         self.assertIsInstance(show_df, pd.DataFrame)
         self.assertEqual(len(raw_df), 1)
         self.assertEqual(len(show_df), 1)
+
+
+    def test_get_lamella_orientations(self):
+        ref_vertex, cell_vects = EV.get_lamella_orientations(self._my_lamella)
+
+        self.assertEqual(ref_vertex.shape, (3,))
+        self.assertEqual(cell_vects.shape, (3, 3))
+
+
+    def test_get_intersection_mask(self):
+        mask_out = EV.get_intersection_mask(
+            tomo_shape = [100, 100, 100],
+            lamella_obj = self._my_lamella
+        )
+
+        self.assertEqual(mask_out.shape, (100,)*3)
+        self.assertAlmostEqual(mask_out.mean(), 0.51, places=4)
 
 
     @classmethod
