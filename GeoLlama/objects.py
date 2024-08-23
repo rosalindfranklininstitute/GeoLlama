@@ -34,3 +34,4 @@ class Config:
     num_cores: typing.Optional[int] = None
     output_csv_path: typing.Optional[str] = None
     output_star_path: typing.Optional[str] = None
+    output_mask: typing.Optional[bool] = None
