@@ -27,6 +27,10 @@ from typing_extensions import Annotated
 import sys
 import multiprocessing as mp
 
+from cProfile import Profile
+from pstats import SortKey, Stats
+from pyinstrument import Profiler
+
 import typer
 import starfile
 from tabulate import tabulate
@@ -104,10 +108,22 @@ def main(
                 "-os", "--star",
                 help="Output path for STAR file."),
         ] = None,
+        output_mask: Annotated[
+            typing.Optional[str],
+            typer.Option(
+                "-m", "--mask",
+                help="Output path for volumetric masks."),
+        ] = None,
         printout: Annotated[
             bool,
             typer.Option(help="Print statistical output after evaluation. Recommended for standalone use of GeoLlama.")
         ] = True,
+        profiling: Annotated[
+            bool,
+            typer.Option(
+                "-pf", "--profiling",
+                help="Turn on profiling mode."),
+        ] = False,
 ):
     """
     Main API for running GeoLlama
@@ -146,11 +162,26 @@ def main(
     if not Path("./surface_models").is_dir():
         Path("surface_models").mkdir()
 
-    filelist = evaluate.find_files(path=params.data_path)
-    raw_df, show_df = evaluate.eval_batch(
-        filelist=filelist,
-        params=params
-    )
+    if params.output_mask and not Path("./volume_masks").is_dir():
+        Path("volume_masks").mkdir()
+
+    if profiling:
+        with Profiler(interval=0.01) as profile:
+            filelist = evaluate.find_files(path=params.data_path)
+            raw_df, show_df = evaluate.eval_batch(
+                filelist=filelist,
+                params=params
+            )
+
+            # Stats(profile).sort_stats(SortKey.CUMULATIVE).print_stats(50, r"\((?!\_).*\)$")
+        profile.print()
+    else:
+        filelist = evaluate.find_files(path=params.data_path)
+        raw_df, show_df = evaluate.eval_batch(
+            filelist=filelist,
+            params=params
+        )
+
 
     # Create bash file for IMOD point2model conversion
     model_filelist = Path("./surface_models/").glob("*.txt")
