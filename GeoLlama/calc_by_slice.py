@@ -37,6 +37,7 @@ from sklearn.decomposition import PCA
 
 from scipy.stats import mode, chi2, t, sem
 import scipy.interpolate as spin
+from scipy.signal import convolve2d as c2d
 from icecream import ic
 
 import matplotlib.pyplot as plt
@@ -276,28 +277,35 @@ def evaluate_slice(view_input: npt.NDArray[any],
         temp = np.delete(mask_s1, idx, axis=0)
         S_inv = np.linalg.inv(np.cov(temp.T))
         diffs = (mask_s1[idx] - temp.mean(axis=0))[np.newaxis, :]
-        jackknife_dist[idx] = np.sqrt( (diffs @ S_inv.T @ diffs.T).diagonal() )
+        jackknife_dist[idx] = np.linalg.norm( (diffs @ S_inv.T @ diffs.T).diagonal() )
 
     conf_limit = t.interval(confidence=0.999, df=2,
                             loc=jackknife_dist.mean(), scale=sem(jackknife_dist))[1]
     mask_s2 = np.squeeze(mask_s1[np.argwhere(jackknife_dist<=conf_limit)], axis=1)
 
     # Step 3: Use distance-based clustering to find sample region
-    clusters = DBSCAN(eps=15, min_samples=1000).fit_predict(mask_s2)
+    clusters = DBSCAN(eps=15, min_samples=350).fit_predict(mask_s2)
     mask_s3_args = np.argwhere(clusters==mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
     # Skip slice if no pixels masked
-    centroid_s3 = mask_s3.mean(axis=0)
+    pointcloud_2d = np.zeros_like(view)
+    pointcloud_2d[[tuple(i) for i in mask_s3]] = 1
+    pointcloud_density = c2d(pointcloud_2d, np.full((5, 5), 1), "same")
+    weights_2d = 1 / (1 + pointcloud_density)
+    masked_weights = [weights_2d[tuple(i)] for i in mask_s3]
+
+    lamella_centre = np.average(mask_s3, weights=masked_weights, axis=0)
+
 
     # Step 4: Use PCA to find best rectangle fits
     pca = PCA(n_components=2)
-    pca.fit(mask_s3)
+    pca.fit(mask_s3 - lamella_centre)
     eigenvecs = pca.components_
     eigenvals = np.sqrt(pca.explained_variance_)
     rectangle_dims = eigenvals * 3      # 3 times SD to cover nearly all points
 
-    # Determine breadth (long semi-minor) axis
+    # Determine breadth (semi-major) axis
     breadth_axis = np.argmin(np.abs(eigenvecs[:, 0]))
     if eigenvecs[breadth_axis, 1] < 0:
         eigenvecs[breadth_axis] *= -1 # Ensure breadth axis always points "right"
@@ -313,8 +321,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
     cell_vecs = eigenvecs * rectangle_dims.reshape((2, 1))
 
     # Centralise lamella centroid to middle of slice along long axis
-    lamella_centre = centroid_s3
-    lamella_to_slice_dist = np.linalg.norm(lamella_centre - 0.5*np.array(view.shape)) * 200 / max(view.shape)
+    lamella_to_slice_dist = 200 * max( np.abs(lamella_centre/np.array(view.shape) - 0.5) )
 
     top_pt1 = lamella_centre + cell_vecs[1] + cell_vecs[0]
     top_pt2 = lamella_centre + cell_vecs[1] - cell_vecs[0]
@@ -404,10 +411,6 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
     yz_bottom_contour_1 = np.delete(yz_surface_bottom_1, removed_slices, axis=0)
     yz_bottom_contour_2 = np.delete(yz_surface_bottom_2, removed_slices, axis=0)
 
-    # yz_remove_empty = np.array([s for s in yz_full_stats if s[3]>0])
-    # yz_thres = otsu(yz_remove_empty[:, 3])
-    # yz_full_stats_refined = np.array([s for s in yz_remove_empty if s[3]>yz_thres])
-
     # Evaluation along Y axis (XZ-slices)
     with mp.Pool(cpu) as p:
         f = partial(evaluate_slice,
@@ -417,10 +420,6 @@ def evaluate_full_lamella(volume: npt.NDArray[any],
         xz_output = np.array(p.map(f, zx_stack_assessment), dtype=object)
 
     xz_full_stats = np.array(xz_output[:, :5], dtype=float)
-
-    # xz_remove_empty = np.array([s for s in xz_full_stats if s[3]>0])
-    # xz_thres = otsu(xz_remove_empty[:, 3])
-    # xz_full_stats_refined = np.array([s for s in xz_remove_empty if s[3]>xz_thres])
 
     # Stat aggregation
     yz_mean = yz_full_stats_refined.mean(axis=0)

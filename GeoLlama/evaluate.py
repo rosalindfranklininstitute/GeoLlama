@@ -20,6 +20,7 @@
 #############################################
 
 
+from dataclasses import dataclass
 from pathlib import Path
 import typing
 import logging
@@ -28,10 +29,14 @@ from rich.logging import RichHandler
 
 import numpy as np
 from scipy.stats import sem
+from scipy.spatial.transform import Rotation as R
+from skimage.transform import downscale_local_mean as DSLM
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 import pandas as pd
+import mrcfile
 
 from GeoLlama.prog_bar import (prog_bar, clear_tasks)
 from GeoLlama import io
@@ -45,6 +50,18 @@ logging.basicConfig(level=logging.INFO,
 )
 
 mpl.use("Agg")
+
+
+@dataclass
+class Lamella():
+    """
+    Object encapsulating estimated specifications of lamella
+    """
+    centroid: list
+    thickness: float
+    breadth: float
+    xtilt: float
+    ytilt: float
 
 
 def find_files(path: str) -> list:
@@ -125,6 +142,8 @@ def save_text_model(surface_info, save_path, binning):
 
     np.savetxt(save_path, full_contours, fmt="%4d %.2f %.2f %.2f")
 
+    return full_contours[:, 1:]
+
 
 def eval_single(
         fname: str,
@@ -141,7 +160,7 @@ def eval_single(
     ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
     """
 
-    tomo, binned_pixel_size = io.read_mrc(
+    tomo, binned_pixel_size, unbinned_shape, tomo_orig = io.read_mrc(
         fname=fname,
         px_size_nm=params.pixel_size_nm,
         downscale=params.binning
@@ -156,9 +175,14 @@ def eval_single(
 
     # Adaptive mode
     if params.adaptive:
-        anomalous = (yz_mean[2] > 300 or yz_mean[2] < 120 or yz_sem[2] > 20 or yz_sem[3] > 5)
-        if anomalous:
-            logging.info(f"Adaptive mode triggered for {fname.name}. \nmean thickness={yz_mean[2]:.3f}, SEM of thickness={yz_sem[2]:.3f}, SEM of xtilt={yz_sem[3]:3f}.")
+        criteria = [
+            yz_mean[0] > 100./3,
+            yz_sem[0] > 5,
+            yz_sem[2] > 20,
+            yz_sem[3] > 5
+        ]
+        if np.any(criteria):
+            logging.info(f"Adaptive mode triggered for {fname.name}. \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
                 pixel_size_nm=binned_pixel_size,
@@ -166,15 +190,40 @@ def eval_single(
                 autocontrast=params.autocontrast,
                 step_pct=1.25,
             )
+            logging.info(f"Final stats after increased sampling: \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %\n")
 
     save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
                 binning=params.binning
     )
-    save_text_model(surface_info=surfaces,
+    contours = save_text_model(surface_info=surfaces,
                     save_path=f"./surface_models/{fname.stem}.txt",
                     binning=params.binning
     )
+
+    if params.output_mask:
+        # Temporarily change ALL axis order from ZXY to XYZ
+        tomo_shape = np.roll(np.array(unbinned_shape), -1)
+        lamella_centroid = np.moveaxis(contours, 0, -1).mean(axis=1)
+
+        # Define Lamella as object (all length measurements in PIXELS!!)
+        lamella = Lamella(
+            centroid = lamella_centroid,
+            breadth = 2*max(tomo_shape),
+            thickness = yz_mean[2] / params.pixel_size_nm,
+            xtilt = yz_mean[3],
+            ytilt = xz_mean[3]
+        )
+
+        mask = np.moveaxis(get_intersection_mask(tomo_shape, lamella), -1, 0)
+        with mrcfile.new(f"./volume_masks/{fname.stem}.mrc", overwrite=True) as f:
+            f.set_data(mask.astype(np.int8))
+
+        with mrcfile.new(f"./volume_masks/{fname.stem}_verify.mrc", overwrite=True) as f:
+            combined = mask * tomo_orig
+            f.set_data(combined.astype(np.float32))
+
+
 
     return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces)
 
@@ -271,3 +320,61 @@ def eval_batch(
     )
 
     return (raw_data, show_data)
+
+
+def get_lamella_orientations(
+        lamella_obj: Lamella
+) -> (np.ndarray, np.ndarray):
+    """
+    Extracts the coordinates of the reference vertex of the lamella, and calculates the cell vector of the estimated lamella.
+
+    Args:
+    lamella_obj (Lamella) : input Lamella object including essential lamella information
+
+    Returns:
+    ndarray, ndarray
+    """
+    rotation_matrix = R.from_euler('yx', [lamella_obj.xtilt, -lamella_obj.ytilt], degrees=True)
+    lamella_cell_vectors = rotation_matrix.apply(np.diag([
+        lamella_obj.breadth,
+        lamella_obj.breadth,
+        lamella_obj.thickness,
+    ]))
+
+    lamella_ref_vertex = lamella_obj.centroid - 0.5*lamella_cell_vectors.sum(axis=0)
+
+    return (lamella_ref_vertex.astype(np.float32), lamella_cell_vectors.astype(np.float32))
+
+
+def get_intersection_mask(
+        tomo_shape: list,
+        lamella_obj: Lamella,
+) -> np.ndarray:
+    """
+    Calculate volumetric mask for region estimated to be within lamella.
+
+    args:
+    tomo_shape (list) : dimensions of the input tomogram
+    lamella_obj (Lamella) : input Lamella object including essential lamella information
+
+    Returns:
+    ndarray
+    """
+    # Calculate full list of tomogram pixel coordinates
+    X, Y, Z = np.meshgrid(
+        np.arange(tomo_shape[0], dtype=np.int16),
+        np.arange(tomo_shape[1], dtype=np.int16),
+        np.arange(tomo_shape[2], dtype=np.int16),
+    )
+    tomo_coords = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+
+    # Delete intermediate arrays meshgrids to release memory
+    del X, Y, Z
+
+    ref_vertex, lamella_vects = get_lamella_orientations(lamella_obj)
+    lamella_vects_norm2 = np.linalg.norm(lamella_vects, axis=1)**2
+
+    object_vect = np.abs(np.inner(np.subtract(tomo_coords, ref_vertex), lamella_vects) / lamella_vects_norm2 - 0.5)
+    mask = np.all( object_vect <= 0.5, axis=1 ).reshape(tomo_shape)
+
+    return mask

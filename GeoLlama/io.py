@@ -44,9 +44,10 @@ def read_mrc(fname: str,
 
     with mrcfile.open(fname) as f:
         data = f.data
+        original_shape = data.shape
 
     if downscale > 1:
         data_ds = DSLM(data, (downscale, downscale, downscale))
-        return (data_ds, px_size_nm*downscale)
+        return (data_ds, px_size_nm*downscale, original_shape, data)
 
-    return (data, px_size_nm)
+    return (data, px_size_nm, original_shape, data)
