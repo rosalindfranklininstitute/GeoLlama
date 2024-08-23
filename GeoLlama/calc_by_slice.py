@@ -284,7 +284,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
     mask_s2 = np.squeeze(mask_s1[np.argwhere(jackknife_dist<=conf_limit)], axis=1)
 
     # Step 3: Use distance-based clustering to find sample region
-    clusters = DBSCAN(eps=15, min_samples=1000).fit_predict(mask_s2)
+    clusters = DBSCAN(eps=15, min_samples=350).fit_predict(mask_s2)
     mask_s3_args = np.argwhere(clusters==mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
