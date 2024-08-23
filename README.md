@@ -18,6 +18,24 @@ If pytest is not available, you can also run tests from the package root folder 
 python3 -m unittest discover
 ```
 
+## Quickstarter
+To use GeoLlama, first create a YAML configuration file by running the command
+```
+geollama generate-config [--output-path PATH]
+```
+The configuration will be generated in the current working directory with default parameters if the `--output-path` flag is not provided.
+
+Once the parameters are set, GeoLlama calculations can be started using the command
+```
+geollama main -i config.yaml
+```
+
+Alternatively, should the user wish to provide the parameters on the command line and run GeoLlama YAML-free, flags corresponding to the parameters in the YAML file can be obtained through
+```
+geollama main --help
+```
+
+
 ## Issues
 Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitute/GeoLlama/issues) to submit bug reports or feature requests.
 
