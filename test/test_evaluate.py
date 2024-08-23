@@ -66,6 +66,7 @@ class EvaluateTest(unittest.TestCase):
             pixel_size_nm=1.0,
             output_csv_path=None,
             output_star_path=None,
+            output_mask=False,
         )
 
         # Run single analysis to get output for subsequent tests

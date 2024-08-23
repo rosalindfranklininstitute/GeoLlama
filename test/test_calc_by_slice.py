@@ -128,7 +128,7 @@ class CalcBySliceTest(unittest.TestCase):
 
     def test_evaluate_slice(self):
         # Run evaluate_slice
-        (breadth, thickness, angle, num_points,
+        (displacement, breadth, thickness, angle, num_points,
          surface_t1, surface_t2,
          surface_b1, surface_b2) = CBS.evaluate_slice(
              view_input=self.image_2d,
@@ -136,6 +136,9 @@ class CalcBySliceTest(unittest.TestCase):
          )
 
         # Tests
+        self.assertIsInstance(displacement, float)
+        self.assertTrue(0 <= displacement <= 100, "Lamella centroid displacement must be between 0 and 100%.")
+
         self.assertIsInstance(breadth, float)
         self.assertGreaterEqual(breadth, 0, "Lamella breadth must be >= 0 (nm).")
 

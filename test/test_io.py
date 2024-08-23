@@ -57,21 +57,23 @@ class IOSmokeTest(unittest.TestCase):
 
         os.chdir(self.tmpdir.name)
         # Test whether image remains unchanged if no binning
-        data, px_size = io.read_mrc(fname="./test.mrc",
-                                    px_size_nm=test_px_size,
-                                    downscale=1
+        data_out, px_size, shape_in, data_in = io.read_mrc(fname="./test.mrc",
+                                                           px_size_nm=test_px_size,
+                                                           downscale=1
         )
-        self.assertIsInstance(data, np.ndarray)
-        self.assertEqual(data.shape, self.test_data.shape)
-        self.assertTrue(np.array_equal(data, self.test_data))
+        self.assertIsInstance(data_out, np.ndarray)
+        self.assertEqual(data_in.shape, self.test_data.shape)
+        self.assertEqual(shape_in, self.test_data.shape)
+        self.assertTrue(np.array_equal(data_in, data_out))
 
         # Test whether image has been correctly binned
-        data_ds, px_size_ds = io.read_mrc(fname="./test.mrc",
-                                          px_size_nm=test_px_size,
-                                          downscale=2
+        data_ds, px_size_ds, shape_in, data_in = io.read_mrc(fname="./test.mrc",
+                                                             px_size_nm=test_px_size,
+                                                             downscale=2
         )
         self.assertEqual(data_ds.shape, (50, 50, 50))
         self.assertAlmostEqual(px_size_ds, 2.0, places=7)
+        self.assertTrue(np.array_equal(data_in, self.test_data))
 
 
     @classmethod

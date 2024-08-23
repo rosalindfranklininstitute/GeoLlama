@@ -39,8 +39,8 @@ def generate_config(output_path):
 
     config_str = """ \
 # Essential parameters
-data_path: None
-pixel_size_nm: None
+data_path: null
+pixel_size_nm: null
 
 # Optional parameters
 binning: 1

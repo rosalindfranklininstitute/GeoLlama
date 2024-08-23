@@ -61,17 +61,18 @@ class ConfigTest(unittest.TestCase):
 
         # Test if config file is read correctly
         params = config.read_config("./config.yaml")
+        print(params)
 
         self.assertTrue(isinstance(params, objects.Config))
-        self.assertTrue(params.data_path, None)
-        self.assertTrue(params.pixel_size_nm, None)
+        self.assertIsNone(params.data_path)
+        self.assertIsNone(params.pixel_size_nm)
         self.assertTrue(params.binning, 1)
-        self.assertFalse(params.autocontrast)
-        self.assertFalse(params.adaptive)
+        self.assertTrue(params.autocontrast)
+        self.assertTrue(params.adaptive)
         self.assertFalse(params.bandpass)
         self.assertTrue(params.num_cores, 1)
-        self.assertTrue(params.output_csv_path, None)
-        self.assertTrue(params.output_star_path, None)
+        self.assertIsNone(params.output_csv_path)
+        self.assertIsNone(params.output_star_path)
 
 
     def test_objectify_user_input(self):
@@ -84,7 +85,8 @@ class ConfigTest(unittest.TestCase):
             binning = 1,
             num_cores = 1,
             output_csv_path = None,
-            output_star_path = None
+            output_star_path = None,
+            output_mask = False
         )
 
         self.assertTrue(isinstance(params, objects.Config))
@@ -97,6 +99,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.num_cores, 1)
         self.assertEqual(params.output_csv_path, None)
         self.assertEqual(params.output_star_path, None)
+        self.assertFalse(params.output_mask)
 
 
     def test_check_config(self):
@@ -110,6 +113,7 @@ class ConfigTest(unittest.TestCase):
             bandpass = False,
             output_csv_path = None,
             output_star_path = None,
+            output_mask = False
         )
 
         # Test for None path exception handling

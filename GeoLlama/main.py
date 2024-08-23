@@ -109,7 +109,7 @@ def main(
                 help="Output path for STAR file."),
         ] = None,
         output_mask: Annotated[
-            typing.Optional[str],
+            bool,
             typer.Option(
                 "-m", "--mask",
                 help="Output path for volumetric masks."),
@@ -140,6 +140,7 @@ def main(
     num_cores (int) : Number of CPUs used
     output_csv_path (str) : Output path for CSV file
     output_star_path (str) : Output path for STAR file
+    output_mask (bool) : Whether to output volumetric masks
     printout (bool) : Print statistical output after evaluation
     """
 
@@ -155,7 +156,8 @@ def main(
             binning=binning,
             num_cores=num_cores,
             output_csv_path=output_csv_path,
-            output_star_path=output_star_path
+            output_star_path=output_star_path,
+            output_mask=output_mask
         )
     config.check_config(params)
 

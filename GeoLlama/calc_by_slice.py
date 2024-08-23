@@ -277,7 +277,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
         temp = np.delete(mask_s1, idx, axis=0)
         S_inv = np.linalg.inv(np.cov(temp.T))
         diffs = (mask_s1[idx] - temp.mean(axis=0))[np.newaxis, :]
-        jackknife_dist[idx] = np.sqrt( (diffs @ S_inv.T @ diffs.T).diagonal() )
+        jackknife_dist[idx] = np.linalg.norm( (diffs @ S_inv.T @ diffs.T).diagonal() )
 
     conf_limit = t.interval(confidence=0.999, df=2,
                             loc=jackknife_dist.mean(), scale=sem(jackknife_dist))[1]
