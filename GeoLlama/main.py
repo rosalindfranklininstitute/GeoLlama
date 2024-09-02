@@ -179,11 +179,10 @@ def main(
         profile.print()
     else:
         filelist = evaluate.find_files(path=params.data_path)
-        raw_df, show_df = evaluate.eval_batch(
+        raw_df, analytics_df, show_df = evaluate.eval_batch(
             filelist=filelist,
             params=params
         )
-
 
     # Create bash file for IMOD point2model conversion
     model_filelist = Path("./surface_models/").glob("*.txt")
@@ -201,18 +200,20 @@ done
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
     thickness_std_of_mean = raw_df['Mean_thickness_nm'].std()
-    thickness_anomaly_pct = raw_df['thickness_anomaly'].mean() * 100
 
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
-    xtilt_anomaly_pct = raw_df['xtilt_anomaly'].mean() * 100
 
-    anomaly_both_pct = (raw_df['thickness_anomaly'] & raw_df['xtilt_anomaly']).mean() * 100
+    anomalous_count = analytics_df["Num_possible_anomalies"][analytics_df["Num_possible_anomalies"] >= 3].count()
 
     if params.output_csv_path is not None:
         raw_df.to_csv(params.output_csv_path, index=False)
     if params.output_star_path is not None:
-        starfile.write(raw_df, params.output_star_path, overwrite=True)
+        starfile.write(
+            {"metrics": raw_df, "analytics": analytics_df},
+            params.output_star_path,
+            overwrite=True
+        )
 
     if printout:
         print(tabulate(show_df,
@@ -221,4 +222,4 @@ done
         ))
         print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
         print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
-        print(f"% Anomaly (thickness/xtilt/both) = {thickness_anomaly_pct:.2f} / {xtilt_anomaly_pct:.2f} / {anomaly_both_pct:.2f}")
+        print(f"# Datasets with 3+ potential anomalies detected = {anomalous_count} / {len(raw_df)}")

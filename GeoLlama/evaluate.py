@@ -26,6 +26,7 @@ import typing
 import logging
 import functools
 from rich.logging import RichHandler
+import multiprocessing as mp
 
 import numpy as np
 from scipy.stats import sem
@@ -186,7 +187,7 @@ def eval_single(
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
                 pixel_size_nm=binned_pixel_size,
-                cpu=params.num_cores,
+                cpu=params.num_cores*2 if params.num_cores <= mp.cpu_count()//3 else params.num_cores,
                 autocontrast=params.autocontrast,
                 step_pct=1.25,
             )
@@ -282,29 +283,50 @@ def eval_batch(
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_sem_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_sem_list[idx]:.2f}")
 
-    # Detect anomalies
-    xtilt_mean_of_mean = np.array(xtilt_mean_list).mean()
-    xtilt_mean_sem = sem(np.array(xtilt_mean_list))
-
-    thick_anomaly = functools.reduce(np.logical_or, (
-        np.array(thickness_mean_list) < 120,
-        np.array(thickness_mean_list) > 300,
-        np.array(thickness_sem_list) > 20
+    # Detect potential anomalies
+    anom_too_thin = np.array(thickness_mean_list) < 120
+    anom_too_thick = np.array(thickness_mean_list) >= 300
+    anom_thick_uncertain = np.array(thickness_sem_list) >= 15
+    anom_xtilt_oor = functools.reduce(np.logical_or, (
+        np.array(xtilt_mean_list) < np.mean(xtilt_mean_list) - 3*np.std(xtilt_mean_list),
+        np.array(xtilt_mean_list) > np.mean(xtilt_mean_list) + 3*np.std(xtilt_mean_list)
     ) )
-    xtilt_anomaly = np.array(xtilt_sem_list) > 5
+    anom_xtilt_uncertain = np.array(xtilt_sem_list) >= 5
+    anom_centroid_displaced = np.array(drift_mean_list) >= 25
+    anom_wild_drift = np.array(drift_sem_list) > 5
+
+    anom_collated = np.stack((
+        anom_too_thin, anom_too_thick, anom_thick_uncertain,
+        anom_xtilt_oor, anom_xtilt_uncertain,
+        anom_centroid_displaced, anom_wild_drift
+    ), axis=1)
+    num_anom_categories = anom_collated.sum(axis=1)
 
     raw_data = pd.DataFrame(
-        {"filename": [f.name for f in filelist],
-         "Mean_thickness_nm": thickness_mean_list,
-         "Thickness_SEM_nm": thickness_sem_list,
-         "Mean_X-tilt_degs": xtilt_mean_list,
-         "X-tilt_SEM_degs": xtilt_sem_list,
-         "Mean_Y-tilt_degs": ytilt_mean_list,
-         "Y-tilt_SEM_degs": ytilt_sem_list,
-         "Mean_drift_perc": drift_mean_list,
-         "Drift_SEM_perc": drift_sem_list,
-         "thickness_anomaly": thick_anomaly,
-         "xtilt_anomaly": xtilt_anomaly,
+        {
+            "filename": [f.name for f in filelist],
+            "Mean_thickness_nm": thickness_mean_list,
+            "Thickness_SEM_nm": thickness_sem_list,
+            "Mean_X-tilt_degs": xtilt_mean_list,
+            "X-tilt_SEM_degs": xtilt_sem_list,
+            "Mean_Y-tilt_degs": ytilt_mean_list,
+            "Y-tilt_SEM_degs": ytilt_sem_list,
+            "Mean_drift_perc": drift_mean_list,
+            "Drift_SEM_perc": drift_sem_list,
+        }
+    )
+
+    analytics_data = pd.DataFrame(
+        {
+            "filename": [f.name for f in filelist],
+            "Anom_too_thin": anom_too_thin,
+            "Anom_too_thick": anom_too_thick,
+            "Anom_thick_uncertain": anom_thick_uncertain,
+            "Anom_xtilt_out_of_range": anom_xtilt_oor,
+            "Anom_xtilt_uncertain": anom_xtilt_uncertain,
+            "Anom_centroid_displaced": anom_centroid_displaced,
+            "Anom_wild_drift": anom_wild_drift,
+            "Num_possible_anomalies": num_anom_categories
         }
     )
 
@@ -314,12 +336,11 @@ def eval_batch(
          "X-tilt (degs)": xtilt_list,
          "Y-tilt (degs)": ytilt_list,
          "Centroid drift (%)": drift_list,
-         "thickness_anomaly": thick_anomaly,
-         "xtilt_anomaly": xtilt_anomaly,
+         "Num_possible_anomalies": num_anom_categories
         }
     )
 
-    return (raw_data, show_data)
+    return (raw_data, analytics_data, show_data)
 
 
 def get_lamella_orientations(
