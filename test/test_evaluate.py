@@ -142,12 +142,14 @@ class EvaluateTest(unittest.TestCase):
             filelist=filelist,
             params=self.params
         )
-        self.assertEqual(len(out), 2)
+        self.assertEqual(len(out), 3)
 
-        raw_df, show_df = out
+        raw_df, analytics_df, show_df = out
         self.assertIsInstance(raw_df, pd.DataFrame)
+        self.assertIsInstance(analytics_df, pd.DataFrame)
         self.assertIsInstance(show_df, pd.DataFrame)
         self.assertEqual(len(raw_df), 1)
+        self.assertEqual(len(analytics_df), 1)
         self.assertEqual(len(show_df), 1)
 
 

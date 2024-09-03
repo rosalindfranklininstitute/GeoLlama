@@ -62,9 +62,8 @@ class IOSmokeTest(unittest.TestCase):
                                                            downscale=1
         )
         self.assertIsInstance(data_out, np.ndarray)
-        self.assertEqual(data_in.shape, self.test_data.shape)
-        self.assertEqual(shape_in, self.test_data.shape)
-        self.assertTrue(np.array_equal(data_in, data_out))
+        self.assertEqual(shape_in, (100, 100, 100))
+        self.assertEqual(data_in, None)
 
         # Test whether image has been correctly binned
         data_ds, px_size_ds, shape_in, data_in = io.read_mrc(fname="./test.mrc",

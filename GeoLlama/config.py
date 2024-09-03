@@ -153,4 +153,4 @@ def check_config(
     if not isinstance(params.num_cores, int):
         raise ValueError("num_cores (-np) must be an integer.")
     elif not 1 <= params.num_cores <= mp.cpu_count():
-        raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}).")
+        raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}). Current settings: {params.num_cores}")

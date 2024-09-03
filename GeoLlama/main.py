@@ -20,12 +20,16 @@
 #########################################
 
 import os
+from datetime import datetime as dt
+import logging
+
 from pprint import pprint
 from pathlib import Path
 import typing
 from typing_extensions import Annotated
 import sys
 import multiprocessing as mp
+import pandas as pd
 
 from cProfile import Profile
 from pstats import SortKey, Stats
@@ -41,6 +45,7 @@ from GeoLlama import evaluate
 from GeoLlama import calc_by_slice as CBS
 
 
+VERSION = "1.0.0b1"
 app = typer.Typer()
 
 
@@ -144,6 +149,11 @@ def main(
     printout (bool) : Print statistical output after evaluation
     """
 
+    logging.info("GeoLlama started.")
+    # Record application start time
+    start_time = dt.now()
+
+
     if input_config is not None:
         params = config.read_config(input_config)
     else:
@@ -160,6 +170,7 @@ def main(
             output_mask=output_mask
         )
     config.check_config(params)
+    logging.info("Configuration checks complete.")
 
     if not Path("./surface_models").is_dir():
         Path("surface_models").mkdir()
@@ -179,11 +190,10 @@ def main(
         profile.print()
     else:
         filelist = evaluate.find_files(path=params.data_path)
-        raw_df, show_df = evaluate.eval_batch(
+        raw_df, analytics_df, show_df = evaluate.eval_batch(
             filelist=filelist,
             params=params
         )
-
 
     # Create bash file for IMOD point2model conversion
     model_filelist = Path("./surface_models/").glob("*.txt")
@@ -197,22 +207,40 @@ done
     with open("./surface_models/p2m_convert.sh", "w") as f:
         f.write(text)
 
+    logging.info("All evaluations finished. Preparing statistical outputs...")
+    # Record process end time
+    end_time = dt.now()
+
+    # Aggregate run metadata
+    metadata_df = pd.DataFrame({
+        "version": [VERSION],
+        "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
+        "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
+        "time_elapsed": [str(end_time - start_time)],
+        "binning": [params.binning]
+    })
 
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
     thickness_std_of_mean = raw_df['Mean_thickness_nm'].std()
-    thickness_anomaly_pct = raw_df['thickness_anomaly'].mean() * 100
 
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
-    xtilt_anomaly_pct = raw_df['xtilt_anomaly'].mean() * 100
 
-    anomaly_both_pct = (raw_df['thickness_anomaly'] & raw_df['xtilt_anomaly']).mean() * 100
+    xtilt_filtered = raw_df['Mean_X-tilt_degs'][~analytics_df['Anom_xtilt_out_of_range']]
+    xtilt_filtered_mean_of_mean = xtilt_filtered.mean()
+    xtilt_filtered_std_of_mean = xtilt_filtered.std()
+
+    anomalous_count = analytics_df["Num_possible_anomalies"][analytics_df["Num_possible_anomalies"] >= 3].count()
 
     if params.output_csv_path is not None:
         raw_df.to_csv(params.output_csv_path, index=False)
     if params.output_star_path is not None:
-        starfile.write(raw_df, params.output_star_path, overwrite=True)
+        starfile.write(
+            {"metadata": metadata_df, "metrics": raw_df, "analytics": analytics_df},
+            params.output_star_path,
+            overwrite=True
+        )
 
     if printout:
         print(tabulate(show_df,
@@ -220,5 +248,11 @@ done
                        tablefmt="pretty",
         ))
         print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
-        print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
-        print(f"% Anomaly (thickness/xtilt/both) = {thickness_anomaly_pct:.2f} / {xtilt_anomaly_pct:.2f} / {anomaly_both_pct:.2f}")
+        print(f"Mean/std of xtilt across datasets (UNFILTERED) = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+        print(f"Mean/std of xtilt across datasets (FILTERED) = {xtilt_filtered_mean_of_mean:.2f} +/- {xtilt_filtered_std_of_mean:.2f} degs")
+        print(f"# Datasets with 3+ potential anomalies detected = {anomalous_count} / {len(raw_df)}")
+
+        if xtilt_filtered_std_of_mean > 15:
+            print(f"\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED.")
+
+    logging.info("All GeoLlama tasks finished.")

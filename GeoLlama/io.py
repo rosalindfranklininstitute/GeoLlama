@@ -50,4 +50,4 @@ def read_mrc(fname: str,
         data_ds = DSLM(data, (downscale, downscale, downscale))
         return (data_ds, px_size_nm*downscale, original_shape, data)
 
-    return (data, px_size_nm, original_shape, data)
+    return (data, px_size_nm, original_shape, None)
