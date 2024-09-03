@@ -227,6 +227,10 @@ done
     xtilt_mean_of_mean = raw_df['Mean_X-tilt_degs'].mean()
     xtilt_std_of_mean = raw_df['Mean_X-tilt_degs'].std()
 
+    xtilt_filtered = raw_df['Mean_X-tilt_degs'][~analytics_df['Anom_xtilt_out_of_range']]
+    xtilt_filtered_mean_of_mean = xtilt_filtered.mean()
+    xtilt_filtered_std_of_mean = xtilt_filtered.std()
+
     anomalous_count = analytics_df["Num_possible_anomalies"][analytics_df["Num_possible_anomalies"] >= 3].count()
 
     if params.output_csv_path is not None:
@@ -244,5 +248,11 @@ done
                        tablefmt="pretty",
         ))
         print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
-        print(f"Mean/std of xtilt across datasets = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+        print(f"Mean/std of xtilt across datasets (UNFILTERED) = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+        print(f"Mean/std of xtilt across datasets (FILTERED) = {xtilt_filtered_mean_of_mean:.2f} +/- {xtilt_filtered_std_of_mean:.2f} degs")
         print(f"# Datasets with 3+ potential anomalies detected = {anomalous_count} / {len(raw_df)}")
+
+        if xtilt_filtered_std_of_mean > 15:
+            print(f"\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED.")
+
+    logging.info("All GeoLlama tasks finished.")

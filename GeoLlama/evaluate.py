@@ -29,7 +29,7 @@ from rich.logging import RichHandler
 import multiprocessing as mp
 
 import numpy as np
-from scipy.stats import sem
+from scipy.stats import sem, t
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import downscale_local_mean as DSLM
 
@@ -283,14 +283,22 @@ def eval_batch(
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_sem_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_sem_list[idx]:.2f}")
 
+    # Calculate 99% CI of xtilt values
+    xtilt_jackknife = np.empty(len(xtilt_array := xtilt_mean_list))
+    for idx, val in enumerate(xtilt_array):
+        temp = np.delete(xtilt_array, idx)
+        diffs = xtilt_array[idx] - temp.mean()
+        xtilt_jackknife[idx] = np.sqrt(diffs**2 / np.cov(xtilt_array))
+    jackknife_CI = t.interval(confidence=0.99, df=1,
+                              loc=xtilt_jackknife.mean(),
+                              scale=sem(xtilt_jackknife))[1]
+    jackknife_mask = xtilt_jackknife <= jackknife_CI
+
     # Detect potential anomalies
     anom_too_thin = np.array(thickness_mean_list) < 120
     anom_too_thick = np.array(thickness_mean_list) >= 300
     anom_thick_uncertain = np.array(thickness_sem_list) >= 15
-    anom_xtilt_oor = functools.reduce(np.logical_or, (
-        np.array(xtilt_mean_list) < np.mean(xtilt_mean_list) - 3*np.std(xtilt_mean_list),
-        np.array(xtilt_mean_list) > np.mean(xtilt_mean_list) + 3*np.std(xtilt_mean_list)
-    ) )
+    anom_xtilt_oor = ~jackknife_mask
     anom_xtilt_uncertain = np.array(xtilt_sem_list) >= 5
     anom_centroid_displaced = np.array(drift_mean_list) >= 25
     anom_wild_drift = np.array(drift_sem_list) > 5
