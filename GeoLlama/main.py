@@ -20,12 +20,16 @@
 #########################################
 
 import os
+from datetime import datetime as dt
+import logging
+
 from pprint import pprint
 from pathlib import Path
 import typing
 from typing_extensions import Annotated
 import sys
 import multiprocessing as mp
+import pandas as pd
 
 from cProfile import Profile
 from pstats import SortKey, Stats
@@ -41,6 +45,7 @@ from GeoLlama import evaluate
 from GeoLlama import calc_by_slice as CBS
 
 
+VERSION = "1.0.0b1"
 app = typer.Typer()
 
 
@@ -144,6 +149,11 @@ def main(
     printout (bool) : Print statistical output after evaluation
     """
 
+    logging.info("GeoLlama started.")
+    # Record application start time
+    start_time = dt.now()
+
+
     if input_config is not None:
         params = config.read_config(input_config)
     else:
@@ -160,6 +170,7 @@ def main(
             output_mask=output_mask
         )
     config.check_config(params)
+    logging.info("Configuration checks complete.")
 
     if not Path("./surface_models").is_dir():
         Path("surface_models").mkdir()
@@ -196,6 +207,18 @@ done
     with open("./surface_models/p2m_convert.sh", "w") as f:
         f.write(text)
 
+    logging.info("All evaluations finished. Preparing statistical outputs...")
+    # Record process end time
+    end_time = dt.now()
+
+    # Aggregate run metadata
+    metadata_df = pd.DataFrame({
+        "version": [VERSION],
+        "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
+        "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
+        "time_elapsed": [str(end_time - start_time)],
+        "binning": [params.binning]
+    })
 
     # Print overall statistics
     thickness_mean_of_mean = raw_df['Mean_thickness_nm'].mean()
@@ -210,7 +233,7 @@ done
         raw_df.to_csv(params.output_csv_path, index=False)
     if params.output_star_path is not None:
         starfile.write(
-            {"metrics": raw_df, "analytics": analytics_df},
+            {"metadata": metadata_df, "metrics": raw_df, "analytics": analytics_df},
             params.output_star_path,
             overwrite=True
         )
