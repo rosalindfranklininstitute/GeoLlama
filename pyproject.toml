@@ -26,6 +26,7 @@ pyinstrument = "^4"
 icecream = "*"
 typing-extensions = "*"
 ruamel-yaml = "*"
+umap-learn = "*"
 
 [tool.poetry.scripts]
 geollama = "GeoLlama.main:app"

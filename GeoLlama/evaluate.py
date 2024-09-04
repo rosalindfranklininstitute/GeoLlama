@@ -283,13 +283,13 @@ def eval_batch(
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_sem_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_sem_list[idx]:.2f}")
 
-    # Calculate 99% CI of xtilt values
+    # Calculate 90% CI of xtilt values
     xtilt_jackknife = np.empty(len(xtilt_array := xtilt_mean_list))
     for idx, val in enumerate(xtilt_array):
         temp = np.delete(xtilt_array, idx)
         diffs = xtilt_array[idx] - temp.mean()
-        xtilt_jackknife[idx] = np.sqrt(diffs**2 / np.cov(xtilt_array))
-    jackknife_CI = t.interval(confidence=0.99, df=1,
+        xtilt_jackknife[idx] = np.sqrt(diffs**2 / np.cov(temp))
+    jackknife_CI = t.interval(confidence=0.9, df=1,
                               loc=xtilt_jackknife.mean(),
                               scale=sem(xtilt_jackknife))[1]
     jackknife_mask = xtilt_jackknife <= jackknife_CI
