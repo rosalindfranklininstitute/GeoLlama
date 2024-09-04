@@ -214,6 +214,7 @@ done
     # Aggregate run metadata
     metadata_df = pd.DataFrame({
         "version": [VERSION],
+        "data_source": [str(Path(params.data_path).resolve())+'/'],
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
         "time_elapsed": [str(end_time - start_time)],
@@ -230,6 +231,8 @@ done
     xtilt_filtered = raw_df['Mean_X-tilt_degs'][~analytics_df['Anom_xtilt_out_of_range']]
     xtilt_filtered_mean_of_mean = xtilt_filtered.mean()
     xtilt_filtered_std_of_mean = xtilt_filtered.std()
+
+    filtered_count = len(raw_df) - len(xtilt_filtered)
 
     anomalous_count = analytics_df["Num_possible_anomalies"][analytics_df["Num_possible_anomalies"] >= 3].count()
 
@@ -248,8 +251,8 @@ done
                        tablefmt="pretty",
         ))
         print(f"Mean/std of thickness across datasets = {thickness_mean_of_mean:.2f} +/- {thickness_std_of_mean:.2f} nm")
-        print(f"Mean/std of xtilt across datasets (UNFILTERED) = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
-        print(f"Mean/std of xtilt across datasets (FILTERED) = {xtilt_filtered_mean_of_mean:.2f} +/- {xtilt_filtered_std_of_mean:.2f} degs")
+        print(f"Mean/std of xtilt across datasets (Full) = {xtilt_mean_of_mean:.2f} +/- {xtilt_std_of_mean:.2f} degs")
+        print(f"Mean/std of xtilt across datasets ({filtered_count} outlier(s) excl.) = {xtilt_filtered_mean_of_mean:.2f} +/- {xtilt_filtered_std_of_mean:.2f} degs")
         print(f"# Datasets with 3+ potential anomalies detected = {anomalous_count} / {len(raw_df)}")
 
         if xtilt_filtered_std_of_mean > 15:
