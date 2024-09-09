@@ -67,6 +67,12 @@ class EvaluateTest(unittest.TestCase):
             output_csv_path=None,
             output_star_path=None,
             output_mask=False,
+            thickness_lower_limit=120,
+            thickness_upper_limit=300,
+            thickness_std_limit=15,
+            xtilt_std_limit=5,
+            displacement_limit=25,
+            displacement_std_limit=5,
         )
 
         # Run single analysis to get output for subsequent tests
