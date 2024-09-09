@@ -73,6 +73,12 @@ class ConfigTest(unittest.TestCase):
         self.assertTrue(params.num_cores, 1)
         self.assertIsNone(params.output_csv_path)
         self.assertIsNone(params.output_star_path)
+        self.assertEqual(params.thickness_lower_limit, 120)
+        self.assertEqual(params.thickness_upper_limit, 300)
+        self.assertEqual(params.thickness_std_limit, 15)
+        self.assertEqual(params.xtilt_std_limit, 5)
+        self.assertEqual(params.displacement_limit, 25)
+        self.assertEqual(params.displacement_std_limit, 5)
 
 
     def test_objectify_user_input(self):
@@ -86,7 +92,13 @@ class ConfigTest(unittest.TestCase):
             num_cores = 1,
             output_csv_path = None,
             output_star_path = None,
-            output_mask = False
+            output_mask = False,
+            thickness_lower_limit=120,
+            thickness_upper_limit=300,
+            thickness_std_limit=15,
+            xtilt_std_limit=5,
+            displacement_limit=25,
+            displacement_std_limit=5,
         )
 
         self.assertTrue(isinstance(params, objects.Config))
@@ -100,6 +112,12 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.output_csv_path, None)
         self.assertEqual(params.output_star_path, None)
         self.assertFalse(params.output_mask)
+        self.assertEqual(params.thickness_lower_limit, 120)
+        self.assertEqual(params.thickness_upper_limit, 300)
+        self.assertEqual(params.thickness_std_limit, 15)
+        self.assertEqual(params.xtilt_std_limit, 5)
+        self.assertEqual(params.displacement_limit, 25)
+        self.assertEqual(params.displacement_std_limit, 5)
 
 
     def test_check_config(self):
@@ -113,7 +131,13 @@ class ConfigTest(unittest.TestCase):
             bandpass = False,
             output_csv_path = None,
             output_star_path = None,
-            output_mask = False
+            output_mask = False,
+            thickness_lower_limit=120,
+            thickness_upper_limit=300,
+            thickness_std_limit=15,
+            xtilt_std_limit=5,
+            displacement_limit=25,
+            displacement_std_limit=5,
         )
 
         # Test for None path exception handling

@@ -291,14 +291,14 @@ def eval_batch(
     xtilt_thres = [np.median(xtilt_symmetrised)-3*np.std(xtilt_symmetrised), np.median(xtilt_symmetrised)+3*np.std(xtilt_symmetrised)]
 
     # Detect potential anomalies
-    anom_too_thin = np.array(thickness_mean_list) < 120
-    anom_too_thick = np.array(thickness_mean_list) >= 300
-    anom_thick_uncertain = np.array(thickness_sem_list) >= 15
+    anom_too_thin = np.array(thickness_mean_list) < params.thickness_lower_limit
+    anom_too_thick = np.array(thickness_mean_list) >= params.thickness_upper_limit
+    anom_thick_uncertain = np.array(thickness_sem_list) >= params.thickness_std_limit
     anom_xtilt_oor = np.logical_or(xtilt_array<max(xtilt_thres[0], xtilt_symmetrise_limits[0]),
                                    xtilt_array>min(xtilt_thres[1], xtilt_symmetrise_limits[1]))
-    anom_xtilt_uncertain = np.array(xtilt_sem_list) >= 5
-    anom_centroid_displaced = np.array(drift_mean_list) >= 25
-    anom_wild_drift = np.array(drift_sem_list) > 5
+    anom_xtilt_uncertain = np.array(xtilt_sem_list) >= params.xtilt_std_limit
+    anom_centroid_displaced = np.array(drift_mean_list) >= params.displacement_limit
+    anom_wild_drift = np.array(drift_sem_list) > params.displacement_std_limit
 
     anom_collated = np.stack((
         anom_too_thin, anom_too_thick, anom_thick_uncertain,

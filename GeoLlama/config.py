@@ -51,6 +51,14 @@ num_cores: 1
 output_csv_path: null
 output_star_path: null
 output_mask: True
+
+# Analytics parameters
+thickness_lower_limit: 120
+thickness_upper_limit: 300
+thickness_std_limit: 15
+xtilt_std_limit: 5
+displacement_limit : 25
+displacement_std_limit : 5
 """
 
     yaml = ruamel.yaml.YAML()
@@ -104,6 +112,13 @@ def objectify_user_input(
         output_csv_path: typing.Optional[str],
         output_star_path: typing.Optional[str],
         output_mask: typing.Optional[bool],
+
+        thickness_lower_limit: typing.Optional[float],
+        thickness_upper_limit: typing.Optional[float],
+        thickness_std_limit: typing.Optional[float],
+        xtilt_std_limit: typing.Optional[float],
+        displacement_limit : typing.Optional[float],
+        displacement_std_limit : typing.Optional[float],
 ) -> objects.Config:
     """
     Objectifying user provided input as a Config object
@@ -119,6 +134,12 @@ def objectify_user_input(
     output_csv (str) : Output path for CSV file
     output_star (str) : Output path for STAR file
     output_mask (bool) : Produce 3D mask of estimated lamella region (same shape as input tomogram)
+    thickness_lower_limit (float) : Lower limit of lamella thickness in nm (for feature extraction)
+    thickness_upper_limit (float) : Upper limit of lamella thickness in nm (for feature extraction)
+    thickness_std_limit (float) : Limit of lamella thickness standard deviation in nm (for feature extraction)
+    xtilt_std_limit (float) : Limit of lamella xtilt standard deviation in degrees (for feature extraction)
+    displacement_limit (float) : Limit of lamella centroid displacement in % (for feature extraction)
+    displacement_std_limit (float) : Limit of lamella centroid displacement standard deviation in % (for feature extraction)
 
     Returns:
     Config

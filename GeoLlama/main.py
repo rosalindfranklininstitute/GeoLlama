@@ -73,7 +73,7 @@ def main(
         autocontrast: Annotated[
             bool,
             typer.Option(help="Apply autocontrast to slices prior to evaluation. Recommended.")
-        ] = False,
+        ] = True,
         bandpass: Annotated[
             bool,
             typer.Option(help="Apply bandpass filter to tomograms prior to evaluation.")
@@ -93,7 +93,7 @@ def main(
             int,
             typer.Option(
             "-b", "--bin",
-            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (256, 256) to (512, 512). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 4 or -b 8."),
+            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (128, 128) to (256, 256). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 8 or -b 16."),
         ] = 1,
         num_cores: Annotated[
             int,
@@ -118,7 +118,39 @@ def main(
             typer.Option(
                 "-m", "--mask",
                 help="Output path for volumetric masks."),
-        ] = None,
+        ] = False,
+
+        thickness_lower_limit: Annotated[
+            float,
+            typer.Option(
+                help="Lower limit of lamella thickness in nm (for feature extraction)."),
+        ] = 120,
+        thickness_upper_limit: Annotated[
+            float,
+            typer.Option(
+                help="Upper limit of lamella thickness in nm (for feature extraction)."),
+        ] = 300,
+        thickness_std_limit: Annotated[
+            float,
+            typer.Option(
+                help="Limit of lamella thickness standard deviation in nm (for feature extraction)."),
+        ] = 15,
+        xtilt_std_limit: Annotated[
+            float,
+            typer.Option(
+                help="Limit of lamella xtilt standard deviation in degrees (for feature extraction)."),
+        ] = 5,
+        displacement_limit: Annotated[
+            float,
+            typer.Option(
+                help="Limit of lamella centroid displacement in % (for feature extraction)."),
+        ] = 25,
+        displacement_std_limit: Annotated[
+            float,
+            typer.Option(
+                help="Limit of lamella centroid displacement standard deviation in % (for feature extraction)."),
+        ] = 5,
+
         printout: Annotated[
             bool,
             typer.Option(help="Print statistical output after evaluation. Recommended for standalone use of GeoLlama.")
@@ -126,7 +158,6 @@ def main(
         profiling: Annotated[
             bool,
             typer.Option(
-                "-pf", "--profiling",
                 help="Turn on profiling mode."),
         ] = False,
 ):
@@ -145,6 +176,13 @@ def main(
     num_cores (int) : Number of CPUs used
     output_csv_path (str) : Output path for CSV file
     output_star_path (str) : Output path for STAR file
+    thickness_lower_limit (float) : Lower limit of lamella thickness in nm (for feature extraction)
+    thickness_upper_limit (float) : Upper limit of lamella thickness in nm (for feature extraction)
+    thickness_std_limit (float) : Limit of lamella thickness standard deviation in nm (for feature extraction)
+    xtilt_std_limit (float) : Limit of lamella xtilt standard deviation in degrees (for feature extraction)
+    displacement_limit (float) : Limit of lamella centroid displacement in % (for feature extraction)
+    displacement_std_limit (float) : Limit of lamella centroid displacement standard deviation in % (for feature extraction)
+
     output_mask (bool) : Whether to output volumetric masks
     printout (bool) : Print statistical output after evaluation
     """
@@ -156,7 +194,12 @@ def main(
 
     if input_config is not None:
         params = config.read_config(input_config)
+
     else:
+        if data_path is None:
+            raise ValueError("Data path (-p) must be given if config file is not provided.")
+        if pixel_size_nm is None:
+            raise ValueError("Pixel size (-s) must be given if config file is not provided.")
         params = config.objectify_user_input(
             autocontrast=autocontrast,
             adaptive=adaptive,
@@ -167,8 +210,15 @@ def main(
             num_cores=num_cores,
             output_csv_path=output_csv_path,
             output_star_path=output_star_path,
-            output_mask=output_mask
+            output_mask=output_mask,
+            thickness_lower_limit=thickness_lower_limit,
+            thickness_upper_limit=thickness_upper_limit,
+            thickness_std_limit=thickness_std_limit,
+            xtilt_std_limit=xtilt_std_limit,
+            displacement_limit=displacement_limit,
+            displacement_std_limit=displacement_std_limit
         )
+
     config.check_config(params)
     logging.info("Configuration checks complete.")
 

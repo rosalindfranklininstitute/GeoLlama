@@ -35,3 +35,9 @@ class Config:
     output_csv_path: typing.Optional[str] = None
     output_star_path: typing.Optional[str] = None
     output_mask: typing.Optional[bool] = None
+    thickness_lower_limit: typing.Optional[float] = None
+    thickness_upper_limit: typing.Optional[float] = None
+    thickness_std_limit: typing.Optional[float] = None
+    xtilt_std_limit: typing.Optional[float] = None
+    displacement_limit : typing.Optional[float] = None
+    displacement_std_limit : typing.Optional[float] = None
