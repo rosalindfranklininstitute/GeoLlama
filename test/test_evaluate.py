@@ -105,7 +105,7 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_save_figure(self):
-        surface_info = self._single_out[-1]
+        surface_info = self._single_out[6]
         fig_path = Path(f"{self._models_folder}/test_fig.png")
         EV.save_figure(
             surface_info=surface_info,
@@ -117,7 +117,7 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_save_text_model(self):
-        surface_info = self._single_out[-1]
+        surface_info = self._single_out[6]
         fig_path = Path(f"{self._models_folder}/test_fig.txt")
         EV.save_text_model(
             surface_info=surface_info,
@@ -129,15 +129,16 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_eval_single(self):
-        self.assertEqual(len(self._single_out), 7)
+        self.assertEqual(len(self._single_out), 8)
 
-        stats_1, stats_2, mean_1, mean_2, std_1, std_2, surface = self._single_out
+        stats_1, stats_2, mean_1, mean_2, std_1, std_2, surface, binning = self._single_out
         self.assertIsInstance(stats_1, np.ndarray)
         self.assertIsInstance(stats_2, np.ndarray)
         self.assertIsInstance(mean_1, np.ndarray)
         self.assertIsInstance(mean_2, np.ndarray)
         self.assertIsInstance(std_1, np.ndarray)
         self.assertIsInstance(std_2, np.ndarray)
+        self.assertIsInstance(binning, int)
 
 
     def test_eval_batch(self):
