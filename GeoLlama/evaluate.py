@@ -161,10 +161,9 @@ def eval_single(
     ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
     """
 
-    tomo, binned_pixel_size, unbinned_shape, tomo_orig = io.read_mrc(
+    tomo, binned_pixel_size, unbinned_shape, binning_factor, tomo_orig = io.read_mrc(
         fname=fname,
-        px_size_nm=params.pixel_size_nm,
-        downscale=params.binning
+        params=params
     )
 
     yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
@@ -194,11 +193,11 @@ def eval_single(
 
     save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
-                binning=params.binning
+                binning=binning_factor
     )
     contours = save_text_model(surface_info=surfaces,
                     save_path=f"./surface_models/{fname.stem}.txt",
-                    binning=params.binning
+                    binning=binning_factor
     )
 
     if params.output_mask:
@@ -225,7 +224,7 @@ def eval_single(
 
 
 
-    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces)
+    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces, binning_factor)
 
 
 def eval_batch(
@@ -242,6 +241,8 @@ def eval_batch(
     Returns:
     DataFrame, DataFrame
     """
+
+    binning_list = []
 
     drift_mean_list = []
     thickness_mean_list = []
@@ -261,11 +262,12 @@ def eval_batch(
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist, total=len(filelist)):
-            _, _, yz_mean, xz_mean, yz_sem, xz_sem, _ = eval_single(
+            _, _, yz_mean, xz_mean, yz_sem, xz_sem, _, binning = eval_single(
                 fname=tomo,
                 params=params
             )
 
+            binning_list.append(binning)
             drift_mean_list.append(yz_mean[0])
             thickness_mean_list.append(yz_mean[2])
             xtilt_mean_list.append(yz_mean[3])
@@ -310,6 +312,7 @@ def eval_batch(
     raw_data = pd.DataFrame(
         {
             "filename": [f.name for f in filelist],
+            "binning": binning_list,
             "Mean_thickness_nm": thickness_mean_list,
             "Thickness_SEM_nm": thickness_sem_list,
             "Mean_X-tilt_degs": xtilt_mean_list,

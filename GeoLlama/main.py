@@ -93,8 +93,8 @@ def main(
             int,
             typer.Option(
             "-b", "--bin",
-            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (128, 128) to (256, 256). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 8 or -b 16."),
-        ] = 1,
+            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (128, 128) to (256, 256). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 8 or -b 16. Use 0 (default) for auto-binning."),
+        ] = 0,
         num_cores: Annotated[
             int,
             typer.Option(
@@ -172,7 +172,7 @@ def main(
     bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
     data_path (str) : Path to folder holding all tomograms in batch mode
     pixel_size_nm (float) : Tomogram pixel size in nm
-    binning (int) : Binning factor for tomogram evaluation
+    binning (int) : Binning factor for tomogram evaluation (0 = auto)
     num_cores (int) : Number of CPUs used
     output_csv_path (str) : Output path for CSV file
     output_star_path (str) : Output path for STAR file
@@ -221,6 +221,8 @@ def main(
 
     config.check_config(params)
     logging.info("Configuration checks complete.")
+    if params.binning == 0:
+        logging.info("AUTOBIN: Automatic binning factor activated.")
 
     if not Path("./surface_models").is_dir():
         Path("surface_models").mkdir()
@@ -268,7 +270,6 @@ done
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
         "time_elapsed": [str(end_time - start_time)],
-        "binning": [params.binning]
     })
 
     # Print overall statistics
