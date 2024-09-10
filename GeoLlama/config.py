@@ -43,7 +43,7 @@ data_path: null
 pixel_size_nm: null
 
 # Optional parameters
-binning: 1
+binning: 0
 autocontrast: True
 adaptive: True
 bandpass: False

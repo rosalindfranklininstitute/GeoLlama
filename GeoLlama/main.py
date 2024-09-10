@@ -270,6 +270,12 @@ done
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
         "time_elapsed": [str(end_time - start_time)],
+        "thickness_lower_limit": params.thickness_lower_limit,
+        "thickness_upper_limit": params.thickness_upper_limit,
+        "thickness_std_limit": params.thickness_std_limit,
+        "xtilt_std_limit": params.xtilt_std_limit,
+        "displacement_limit": params.displacement_limit,
+        "displacement_std_limit": params.displacement_std_limit
     })
 
     # Print overall statistics
