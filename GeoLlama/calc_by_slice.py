@@ -265,8 +265,8 @@ def evaluate_slice(view_input: npt.NDArray[any],
         view = autocontrast_slice(view)
 
     # Step 1: Greyvalue thresholding with Otsu method
-    thres = otsu(view**2) * 1.25
-    mask_s1 = np.argwhere(view**2 >= thres)
+    thres = otsu(view) * 1.12
+    mask_s1 = np.argwhere(view >= thres)
 
     # Skip slice if no pixels masked
     centroid_s1 = mask_s1.mean(axis=0)
