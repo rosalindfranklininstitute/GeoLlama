@@ -271,7 +271,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
     # Skip slice if no pixels masked
     centroid_s1 = mask_s1.mean(axis=0)
 
-    # Step 2: Use Mahalanobis distance to remove potential outliers
+    # Step 2: Use Jackknife distance to remove potential outliers
     jackknife_dist = np.empty(len(mask_s1))
     for idx in range(len(mask_s1)):
         temp = np.delete(mask_s1, idx, axis=0)
@@ -288,7 +288,7 @@ def evaluate_slice(view_input: npt.NDArray[any],
     mask_s3_args = np.argwhere(clusters==mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
-    # Skip slice if no pixels masked
+    # Calculate weight-corrected centroid of lamella
     pointcloud_2d = np.zeros_like(view)
     pointcloud_2d[[tuple(i) for i in mask_s3]] = 1
     pointcloud_density = c2d(pointcloud_2d, np.full((5, 5), 1), "same")

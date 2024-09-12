@@ -23,12 +23,13 @@ To use GeoLlama, first create a YAML configuration file by running the command
 ```
 geollama generate-config [--output-path PATH]
 ```
-The configuration will be generated in the current working directory with default parameters if the `--output-path` flag is not provided.
+A YAML configuration file will be generated with default parameters. If the `--output-path` parameter is not provided, the file will be generated at `./config.yaml` by default.
 
 Once the parameters are set, GeoLlama calculations can be started using the command
 ```
-geollama main -i config.yaml
+geollama main -i [config]
 ```
+where `[config]` is the path to the YAML configuration file generated and modified.
 
 Alternatively, should the user wish to provide the parameters on the command line and run GeoLlama YAML-free, flags corresponding to the parameters in the YAML file can be obtained through
 ```

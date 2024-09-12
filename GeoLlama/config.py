@@ -128,7 +128,7 @@ def objectify_user_input(
     adaptive (bool) : Use adaptive sampling for slice evaluation
     bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
     user_path (str) : Path to folder holding all tomograms in batch mode
-    pixel_size (float) : Tomogram pixel size in nm
+    pixel_size (float) : Pixel size of input tomogram in nm
     binning (int) : Binning factor for tomogram evaluation
     cpu (int) : Number of CPUs used
     output_csv (str) : Output path for CSV file

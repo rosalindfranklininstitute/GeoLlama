@@ -87,7 +87,7 @@ def main(
             typing.Optional[float],
             typer.Option(
                 "-s", "--pixel_size",
-                help="Tomogram pixel size in nm."),
+                help="Pixel size of input tomogram in nm."),
         ] = None,
         binning: Annotated[
             int,
