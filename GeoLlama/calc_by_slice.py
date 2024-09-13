@@ -20,6 +20,7 @@
 ##################################################
 
 import itertools
+from typing import Optional
 from functools import partial
 from pprint import pprint
 import multiprocessing as mp
@@ -177,7 +178,7 @@ def generalised_theil_sen_fit(contour_pts: npt.NDArray[any],
 
 def leave_one_out(contour_pts: npt.NDArray[any],
                   thres: float=0.1,
-) -> int | None:
+) -> Optional[int]:
     """
     Get  worst outlier point using leave-one-out (LOO) algorithm
 
