@@ -28,15 +28,31 @@ import unittest
 import numpy as np
 import mrcfile
 
-from GeoLlama import io
+from GeoLlama import (io, config)
 
 
 class IOSmokeTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        pass
-
+        self.params = config.objectify_user_input(
+            autocontrast=True,
+            adaptive=False,
+            bandpass=False,
+            data_path=None,
+            num_cores=1,
+            binning=1,
+            pixel_size_nm=1.0,
+            output_csv_path=None,
+            output_star_path=None,
+            output_mask=False,
+            thickness_lower_limit=120,
+            thickness_upper_limit=300,
+            thickness_std_limit=15,
+            xtilt_std_limit=5,
+            displacement_limit=25,
+            displacement_std_limit=5,
+        )
 
     def setUp(self):
         self.tmpdir = tempfile.TemporaryDirectory()
@@ -53,25 +69,25 @@ class IOSmokeTest(unittest.TestCase):
 
 
     def test_read_mrc(self):
-        test_px_size = 1.0
-
         os.chdir(self.tmpdir.name)
         # Test whether image remains unchanged if no binning
-        data, px_size = io.read_mrc(fname="./test.mrc",
-                                    px_size_nm=test_px_size,
-                                    downscale=1
+        data_out, px_size, shape_in, binning, data_in = io.read_mrc(fname="./test.mrc",
+                                                           params=self.params,
         )
-        self.assertIsInstance(data, np.ndarray)
-        self.assertEqual(data.shape, self.test_data.shape)
-        self.assertTrue(np.array_equal(data, self.test_data))
+        self.assertIsInstance(data_out, np.ndarray)
+        self.assertEqual(shape_in, (100, 100, 100))
+        self.assertEqual(binning, 1)
+        self.assertEqual(data_in, None)
 
         # Test whether image has been correctly binned
-        data_ds, px_size_ds = io.read_mrc(fname="./test.mrc",
-                                          px_size_nm=test_px_size,
-                                          downscale=2
+        self.params.binning = 2
+        data_ds, px_size_ds, shape_in, binning, data_in = io.read_mrc(fname="./test.mrc",
+                                                             params=self.params
         )
         self.assertEqual(data_ds.shape, (50, 50, 50))
         self.assertAlmostEqual(px_size_ds, 2.0, places=7)
+        self.assertEqual(binning, 2)
+        self.assertTrue(np.array_equal(data_in, self.test_data))
 
 
     @classmethod

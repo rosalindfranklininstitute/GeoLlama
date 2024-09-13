@@ -19,6 +19,7 @@
 ## Date last modified : 02-Oct-2023  ##
 #######################################
 
+import logging
 
 import numpy as np
 import numpy.typing as npt
@@ -26,10 +27,12 @@ import numpy.typing as npt
 import mrcfile
 from skimage.transform import downscale_local_mean as DSLM
 
+from GeoLlama import objects
+
 
 def read_mrc(fname: str,
-             px_size_nm: float,
-             downscale: int=2) -> (npt.NDArray[any], float):
+             params: objects.Config,
+) -> (npt.NDArray[any], float):
     """
     Function to read in MRC image file.
 
@@ -44,9 +47,16 @@ def read_mrc(fname: str,
 
     with mrcfile.open(fname) as f:
         data = f.data
+        original_shape = data.shape
 
-    if downscale > 1:
-        data_ds = DSLM(data, (downscale, downscale, downscale))
-        return (data_ds, px_size_nm*downscale)
+    # Determine binning factor if auto-binning used
+    binning = params.binning
+    if params.binning == 0:
+        binning = max(1, min(original_shape[1:])//128)
+        logging.info(f"AUTOBIN: {fname.name} - Binning factor={binning}")
 
-    return (data, px_size_nm)
+    if binning > 1:
+        data_ds = DSLM(data, (binning, binning, binning))
+        return (data_ds, params.pixel_size_nm*binning, original_shape, binning, data)
+
+    return (data, params.pixel_size_nm, original_shape, binning, None)
