@@ -49,8 +49,9 @@ adaptive: True
 bandpass: False
 num_cores: 1
 output_csv_path: null
-output_star_path: null
+output_star_path: ./output.star
 output_mask: True
+generate_report: True
 
 # Analytics parameters
 thickness_lower_limit: 120
@@ -112,6 +113,7 @@ def objectify_user_input(
         output_csv_path: typing.Optional[str],
         output_star_path: typing.Optional[str],
         output_mask: typing.Optional[bool],
+        generate_report: typing.Optional[bool],
 
         thickness_lower_limit: typing.Optional[float],
         thickness_upper_limit: typing.Optional[float],
@@ -134,6 +136,7 @@ def objectify_user_input(
     output_csv (str) : Output path for CSV file
     output_star (str) : Output path for STAR file
     output_mask (bool) : Produce 3D mask of estimated lamella region (same shape as input tomogram)
+    generate_report (bool) : Automatically generate report at the end of calculations
     thickness_lower_limit (float) : Lower limit of lamella thickness in nm (for feature extraction)
     thickness_upper_limit (float) : Upper limit of lamella thickness in nm (for feature extraction)
     thickness_std_limit (float) : Limit of lamella thickness standard deviation in nm (for feature extraction)
@@ -175,3 +178,6 @@ def check_config(
         raise ValueError("num_cores (-np) must be an integer.")
     elif not 1 <= params.num_cores <= mp.cpu_count():
         raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}). Current settings: {params.num_cores}")
+
+    if params.generate_report and params.output_star_path is None:
+        raise ValueError("Output STAR file must be specified for automatic report generation.")

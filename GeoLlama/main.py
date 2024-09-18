@@ -161,6 +161,12 @@ def main(
             typer.Option(
                 help="Turn on profiling mode."),
         ] = False,
+        report: Annotated[
+            bool,
+            typer.Option(
+                "--generate-report",
+                help="Automatically generate report at the end of calculations."),
+        ] = True,
 ):
     """
     Main API for running GeoLlama
@@ -186,6 +192,7 @@ def main(
 
     output_mask (bool) : Whether to output volumetric masks
     printout (bool) : Print statistical output after evaluation
+    report (bool) : Automatically generate report at the end of calculations
     """
 
     logging.info("GeoLlama started.")
@@ -212,6 +219,7 @@ def main(
             output_csv_path=output_csv_path,
             output_star_path=output_star_path,
             output_mask=output_mask,
+            generate_report=report,
             thickness_lower_limit=thickness_lower_limit,
             thickness_upper_limit=thickness_upper_limit,
             thickness_std_limit=thickness_std_limit,
@@ -318,6 +326,14 @@ done
             print(f"\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED.")
 
     logging.info("All GeoLlama tasks finished.")
+
+    if params.generate_report:
+        logging.info("Generating GeoLlama report...")
+        generate_report(
+            star_path = params.output_star_path,
+            report_path = "./GeoLlama_report.ipynb",
+            html = True
+        )
 
 
 @app.command()
