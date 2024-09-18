@@ -29,6 +29,11 @@ ruamel-yaml = "*"
 umap-learn = "*"
 
 papermill = "*"
+ipython = "*"
+ipykernel = "*"
+seaborn = "*"
+nbconvert = "*"
+opencv-python = "*"
 
 [tool.poetry.scripts]
 geollama = "GeoLlama.main:app"
