@@ -43,9 +43,10 @@ from GeoLlama import io
 from GeoLlama import config
 from GeoLlama import evaluate
 from GeoLlama import calc_by_slice as CBS
+from GeoLlama import report
 
 
-VERSION = "1.0.0b1"
+VERSION = "1.0.0"
 app = typer.Typer()
 
 
@@ -316,3 +317,22 @@ done
             print(f"\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED.")
 
     logging.info("All GeoLlama tasks finished.")
+
+
+@app.command()
+def generate_report(
+        star_path: Annotated[
+            str,
+            typer.Argument(
+                help="Path to GeoLlama STAR file for report generation."),
+        ],
+        report_path: Annotated[
+            str,
+            typer.Option(
+                help="Target path to save report."),
+        ] = "./GeoLlama_report.ipynb",
+):
+    report.generate_report(
+        report_path = Path(report_path),
+        star_path = Path(star_path)
+    )
