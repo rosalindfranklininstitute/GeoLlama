@@ -16,11 +16,13 @@
 ## Module             : GeoLlama.report  ##
 ## Created            : Neville Yee      ##
 ## Date created       : 16-Sep-2024      ##
-## Date last modified : 16-Sep-2024      ##
+## Date last modified : 17-Sep-2024      ##
 ###########################################
 
+import logging
 
 import warnings
+import subprocess
 from pathlib import Path
 import pkg_resources
 
@@ -67,6 +69,7 @@ def write_ipynb(
 def generate_report(
         report_path: Path,
         star_path: Path,
+        to_html: bool=False
 ):
     """
     Generates temporary Jupyter notebook and converts it using papermill
@@ -74,10 +77,11 @@ def generate_report(
     Args:
     report_path (Path) : Target path for saving completed report
     star_path (Path) : Path to GeoLlama-STAR file for report generation
+    to_html (bool) : Whether to convert the executed report into HTML format
     """
     if report_path.exists():
         raise FileExistsError(f"{report_path} exists. Please choose another filename.")
-    if report_path.suffix not in [".pdf", ".ipynb"]:
+    if report_path.suffix != ".ipynb":
         warnings.warn(f"Output to {report_path.suffix} format is not currently supported. Report will be saved as {report_path.stem}.ipynb.")
         report_path = Path(f"{report_path.parent}/{report_path.stem}.ipynb")
 
@@ -96,3 +100,23 @@ def generate_report(
     )
 
     Path(f"{report_path.parent}/{report_path.stem}_tmp.ipynb").unlink()
+
+    # Convert report to HTML format
+    if to_html:
+        cmd = [
+            "jupyter-nbconvert", "--to", "html",
+            "--TemplateExporter.exclude_input=True",
+            f"{report_path}"
+        ]
+        run_cmd = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="ascii",
+            check=True
+        )
+
+        try:
+            assert not run_cmd.stderr
+        except:
+            logging.critical(f"{run_cmd.stderr}")

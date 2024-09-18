@@ -268,6 +268,7 @@ done
     metadata_df = pd.DataFrame({
         "version": [VERSION],
         "data_source": [str(Path(params.data_path).resolve())+'/'],
+        "model_folder": [str(Path("./surface_models").resolve())+'/'],
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
         "time_elapsed": [str(end_time - start_time)],
@@ -331,8 +332,13 @@ def generate_report(
             typer.Option(
                 help="Target path to save report."),
         ] = "./GeoLlama_report.ipynb",
+        html: Annotated[
+            bool,
+            typer.Option(help="Export report to HTML."),
+        ] = True,
 ):
     report.generate_report(
         report_path = Path(report_path),
-        star_path = Path(star_path)
+        star_path = Path(star_path),
+        to_html = html
     )
