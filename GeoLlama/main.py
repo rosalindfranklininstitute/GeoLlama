@@ -118,7 +118,7 @@ def main(
             bool,
             typer.Option(
                 "-m", "--mask",
-                help="Output path for volumetric masks."),
+                help="Output volumetric binary masks."),
         ] = False,
 
         thickness_lower_limit: Annotated[
