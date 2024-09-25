@@ -23,6 +23,10 @@ import os
 from datetime import datetime as dt
 import logging
 
+os.environ["OMP_NUM_THREADS"] = '1'
+os.environ["OPENBLAS_NUM_THREADS"] = '1'
+os.environ["MKL_NUM_THREADS"] = '1'
+
 from pprint import pprint
 from pathlib import Path
 import typing
