@@ -72,7 +72,8 @@ class ConfigTest(unittest.TestCase):
         self.assertFalse(params.bandpass)
         self.assertEqual(params.num_cores, 1)
         self.assertIsNone(params.output_csv_path)
-        self.assertIsNone(params.output_star_path)
+        self.assertEqual(params.output_star_path, "./output.star")
+        self.assertTrue(params.generate_report)
         self.assertEqual(params.thickness_lower_limit, 120)
         self.assertEqual(params.thickness_upper_limit, 300)
         self.assertEqual(params.thickness_std_limit, 15)
@@ -92,6 +93,7 @@ class ConfigTest(unittest.TestCase):
             num_cores = 1,
             output_csv_path = None,
             output_star_path = None,
+            generate_report = False,
             output_mask = False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
@@ -112,6 +114,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.output_csv_path, None)
         self.assertEqual(params.output_star_path, None)
         self.assertFalse(params.output_mask)
+        self.assertFalse(params.generate_report)
         self.assertEqual(params.thickness_lower_limit, 120)
         self.assertEqual(params.thickness_upper_limit, 300)
         self.assertEqual(params.thickness_std_limit, 15)
@@ -132,6 +135,7 @@ class ConfigTest(unittest.TestCase):
             output_csv_path = None,
             output_star_path = None,
             output_mask = False,
+            generate_report = False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
@@ -174,6 +178,12 @@ class ConfigTest(unittest.TestCase):
         self.assertNotEqual(cm.exception, 0)
 
         params.num_cores = mp.cpu_count() + 1
+        with self.assertRaises(ValueError) as cm:
+            config.check_config(params)
+        self.assertNotEqual(cm.exception, 0)
+
+        # Test for report generation exception handling
+        params.generate_report = True
         with self.assertRaises(ValueError) as cm:
             config.check_config(params)
         self.assertNotEqual(cm.exception, 0)

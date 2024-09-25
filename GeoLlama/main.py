@@ -23,6 +23,10 @@ import os
 from datetime import datetime as dt
 import logging
 
+os.environ["OMP_NUM_THREADS"] = '1'
+os.environ["OPENBLAS_NUM_THREADS"] = '1'
+os.environ["MKL_NUM_THREADS"] = '1'
+
 from pprint import pprint
 from pathlib import Path
 import typing
@@ -43,9 +47,10 @@ from GeoLlama import io
 from GeoLlama import config
 from GeoLlama import evaluate
 from GeoLlama import calc_by_slice as CBS
+from GeoLlama import report
 
 
-VERSION = "1.0.0b1"
+VERSION = "1.0.0"
 app = typer.Typer()
 
 
@@ -117,7 +122,7 @@ def main(
             bool,
             typer.Option(
                 "-m", "--mask",
-                help="Output path for volumetric masks."),
+                help="Output volumetric binary masks."),
         ] = False,
 
         thickness_lower_limit: Annotated[
@@ -160,6 +165,12 @@ def main(
             typer.Option(
                 help="Turn on profiling mode."),
         ] = False,
+        report: Annotated[
+            bool,
+            typer.Option(
+                "--generate-report",
+                help="Automatically generate report at the end of calculations."),
+        ] = True,
 ):
     """
     Main API for running GeoLlama
@@ -185,6 +196,7 @@ def main(
 
     output_mask (bool) : Whether to output volumetric masks
     printout (bool) : Print statistical output after evaluation
+    report (bool) : Automatically generate report at the end of calculations
     """
 
     logging.info("GeoLlama started.")
@@ -211,6 +223,7 @@ def main(
             output_csv_path=output_csv_path,
             output_star_path=output_star_path,
             output_mask=output_mask,
+            generate_report=report,
             thickness_lower_limit=thickness_lower_limit,
             thickness_upper_limit=thickness_upper_limit,
             thickness_std_limit=thickness_std_limit,
@@ -267,6 +280,7 @@ done
     metadata_df = pd.DataFrame({
         "version": [VERSION],
         "data_source": [str(Path(params.data_path).resolve())+'/'],
+        "model_folder": [str(Path("./surface_models").resolve())+'/'],
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
         "time_elapsed": [str(end_time - start_time)],
@@ -316,3 +330,35 @@ done
             print(f"\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED.")
 
     logging.info("All GeoLlama tasks finished.")
+
+    if params.generate_report:
+        logging.info("Generating GeoLlama report...")
+        generate_report(
+            star_path = params.output_star_path,
+            report_path = "./GeoLlama_report.ipynb",
+            html = True
+        )
+
+
+@app.command()
+def generate_report(
+        star_path: Annotated[
+            str,
+            typer.Argument(
+                help="Path to GeoLlama STAR file for report generation."),
+        ],
+        report_path: Annotated[
+            str,
+            typer.Option(
+                help="Target path to save report."),
+        ] = "./GeoLlama_report.ipynb",
+        html: Annotated[
+            bool,
+            typer.Option(help="Export report to HTML."),
+        ] = True,
+):
+    report.generate_report(
+        report_path = Path(report_path),
+        star_path = Path(star_path),
+        to_html = html
+    )

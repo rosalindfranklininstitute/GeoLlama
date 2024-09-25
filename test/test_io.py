@@ -45,6 +45,7 @@ class IOSmokeTest(unittest.TestCase):
             pixel_size_nm=1.0,
             output_csv_path=None,
             output_star_path=None,
+            generate_report=None,
             output_mask=False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,

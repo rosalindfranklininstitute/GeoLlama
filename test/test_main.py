@@ -107,6 +107,7 @@ class MainTest(unittest.TestCase):
                 pixel_size_nm = 1,
                 output_csv_path = "./test.csv",
                 output_star_path = "./test.star",
+                report = False
             )
 
             # Test if files are created
