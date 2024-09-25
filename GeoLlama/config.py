@@ -60,7 +60,7 @@ pixel_size_nm: null
 binning: 0
 autocontrast: True
 adaptive: True
-OAbandpass: False
+bandpass: False
 num_cores: 1
 output_csv_path: null
 output_star_path: ./output.star
