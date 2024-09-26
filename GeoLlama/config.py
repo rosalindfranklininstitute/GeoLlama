@@ -138,6 +138,7 @@ def objectify_user_input(
         output_star_path: typing.Optional[str],
         output_mask: typing.Optional[bool],
         generate_report: typing.Optional[bool],
+        printout: typing.Optional[bool],
 
         thickness_lower_limit: typing.Optional[float],
         thickness_upper_limit: typing.Optional[float],
