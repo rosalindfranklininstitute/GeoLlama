@@ -51,7 +51,22 @@ from GeoLlama import report
 
 
 VERSION = "1.0.0"
-app = typer.Typer()
+
+def callback():
+    pass
+
+app = typer.Typer(callback=callback)
+
+@app.callback()
+def callback(
+        dev_mode: Annotated[
+            bool,
+            typer.Option(
+                "-e", "--dev_mode",
+                help="Developer mode. If true, verbose error messages and tracebacks will be enabled",)
+        ] = False,
+):
+    app.pretty_exceptions_show_locals = dev_mode
 
 
 @app.command()
@@ -85,7 +100,7 @@ def main(
         ] = False,
         data_path: Annotated[
             typing.Optional[str],
-            typer.Option("-p", "--path",
+            typer.Option("-p", "--data_path",
                          help="Path to folder holding all tomograms. (NB. Direct path to individual tomogram file not supported.)"),
         ] = None,
         pixel_size_nm: Annotated[
@@ -103,7 +118,7 @@ def main(
         num_cores: Annotated[
             int,
             typer.Option(
-                "-np", "--num_proc",
+                "-np", "--num_cores",
                 help="Number of CPUs used."),
         ] = 1,
         output_csv_path: Annotated[
@@ -122,7 +137,7 @@ def main(
             bool,
             typer.Option(
                 "-m", "--mask",
-                help="Output volumetric binary masks."),
+                help="Output volumetric binary masks. If true, masks will be saved in ./volume_masks/ with same filenames as input tomogram."),
         ] = False,
 
         thickness_lower_limit: Annotated[
@@ -224,6 +239,7 @@ def main(
             output_star_path=output_star_path,
             output_mask=output_mask,
             generate_report=report,
+            printout=printout,
             thickness_lower_limit=thickness_lower_limit,
             thickness_upper_limit=thickness_upper_limit,
             thickness_std_limit=thickness_std_limit,

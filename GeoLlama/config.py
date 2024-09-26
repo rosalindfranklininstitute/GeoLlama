@@ -54,8 +54,9 @@ pixel_size_nm: null
 # num_cores: Number of CPUs used.
 # output_csv_path: Output path for CSV file. Leave blank if no CSV file output required.
 # output_star_path: Output path for STAR file. Leave blank if no STAR file output required.
-# output_mask: Output volumetric binary masks.
+# output_mask: Output volumetric binary masks. If true, masks will be saved in ./volume_masks/ with same filenames as input tomogram
 # generate_report: Automatically generate report at the end of calculations.
+# printout: Print statistical output after evaluation. Recommended for standalone use of GeoLlama
 
 binning: 0
 autocontrast: True
@@ -66,6 +67,7 @@ output_csv_path: null
 output_star_path: ./output.star
 output_mask: True
 generate_report: True
+printout: True
 
 
 # ANALYTICS PARAMETERS for feature extraction
