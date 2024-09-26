@@ -68,6 +68,7 @@ class EvaluateTest(unittest.TestCase):
             output_star_path=None,
             generate_report=False,
             output_mask=False,
+            printout=False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
