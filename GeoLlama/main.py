@@ -27,21 +27,12 @@ os.environ["OMP_NUM_THREADS"] = '1'
 os.environ["OPENBLAS_NUM_THREADS"] = '1'
 os.environ["MKL_NUM_THREADS"] = '1'
 
-from pprint import pprint
 from pathlib import Path
 import typing
 from typing_extensions import Annotated
 import sys
-import multiprocessing as mp
-import pandas as pd
-
-from cProfile import Profile
-from pstats import SortKey, Stats
-from pyinstrument import Profiler
 
 import typer
-import starfile
-from tabulate import tabulate
 
 from GeoLlama import io
 from GeoLlama import config
@@ -62,8 +53,8 @@ def callback(
         dev_mode: Annotated[
             bool,
             typer.Option(
-                "-e", "--dev_mode",
-                help="Developer mode. If true, verbose error messages and tracebacks will be enabled",)
+                "-d", "--dev_mode",
+                help="Developer mode. If true, verbose error messages and tracebacks (with full printout of local variables) will be enabled.",)
         ] = False,
 ):
     app.pretty_exceptions_show_locals = dev_mode
@@ -218,6 +209,11 @@ def main(
     # Record application start time
     start_time = dt.now()
 
+    # Library loading
+    import starfile
+    from tabulate import tabulate
+    import pandas as pd
+
 
     if input_config is not None:
         params = config.read_config(input_config)
@@ -260,6 +256,11 @@ def main(
         Path("volume_masks").mkdir()
 
     if profiling:
+        # Only import profiling related libraries when needed
+        from cProfile import Profile
+        from pstats import SortKey, Stats
+        from pyinstrument import Profiler
+
         with Profiler(interval=0.01) as profile:
             filelist = evaluate.find_files(path=params.data_path)
             raw_df, show_df = evaluate.eval_batch(
