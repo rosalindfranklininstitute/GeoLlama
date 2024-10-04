@@ -374,6 +374,11 @@ def generate_report(
             typer.Option(help="Export report to HTML."),
         ] = True,
 ):
+    try:
+        not Path(report_path).exists()
+    except:
+        logging.warning("Existing report with same name found and will be replaced.")
+
     report.generate_report(
         report_path = Path(report_path),
         star_path = Path(star_path),
