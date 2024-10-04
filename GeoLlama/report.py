@@ -80,7 +80,7 @@ def generate_report(
     to_html (bool) : Whether to convert the executed report into HTML format
     """
     if report_path.exists():
-        raise FileExistsError(f"{report_path} exists. Please choose another filename.")
+        warnings.warn(f"{report_path} exists. Old report will be rewritten.")
     if report_path.suffix != ".ipynb":
         warnings.warn(f"Output to {report_path.suffix} format is not currently supported. Report will be saved as {report_path.stem}.ipynb.")
         report_path = Path(f"{report_path.parent}/{report_path.stem}.ipynb")
