@@ -22,6 +22,7 @@
 import os
 from datetime import datetime as dt
 import logging
+import re
 
 os.environ["OMP_NUM_THREADS"] = '1'
 os.environ["OPENBLAS_NUM_THREADS"] = '1'
@@ -300,7 +301,7 @@ done
         "model_folder": [str(Path("./surface_models").resolve())+'/'],
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
-        "time_elapsed": [str(end_time - start_time)],
+        "time_elapsed": [ re.sub("\s", "", re.sub("day[s]*,", "D", str(end_time - start_time))) ],
         "thickness_lower_limit": params.thickness_lower_limit,
         "thickness_upper_limit": params.thickness_upper_limit,
         "thickness_std_limit": params.thickness_std_limit,
