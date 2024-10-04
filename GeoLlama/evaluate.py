@@ -19,6 +19,7 @@
 ## Date last modified : 03-May-2024        ##
 #############################################
 
+import inspect
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -100,16 +101,16 @@ def save_figure(surface_info, save_path, binning):
     ax.set_ylabel("y")
     ax.set_zlabel("z")
     ax.plot_surface(
-        surface_top*binning,
         xx_top*binning,
         yy_top*binning,
+        surface_top*binning,
         rstride=5, cstride=5)
     ax.plot_surface(
-        surface_bottom*binning,
         xx_bottom*binning,
         yy_bottom*binning,
+        surface_bottom*binning,
         rstride=5, cstride=5, color="r")
-    ax.view_init(elev=0, azim=80)
+    ax.view_init(elev=0, azim=-80)
 
     plt.savefig(save_path)
     plt.close()
@@ -126,13 +127,13 @@ def save_text_model(surface_info, save_path, binning):
     """
     xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, model_top, model_bottom = surface_info
 
-    contour_top = np.tile(range(1, len(model_top)//2+1), 2)[:, np.newaxis] #np.full((len(model_top),1), 1, dtype=int)
+    contour_top = np.tile(range(1, len(model_top)//2+1), 2)[:, np.newaxis]
     full_list_top = np.hstack(
         (contour_top, model_top*binning),
         dtype=object
     )
 
-    contour_bottom = np.tile(range(len(model_top)//2+1, len(model_bottom)+1), 2)[:, np.newaxis] #np.full((len(model_bottom),1), 2, dtype=int)
+    contour_bottom = np.tile(range(len(model_top)//2+1, len(model_bottom)+1), 2)[:, np.newaxis]
     full_list_bottom = np.hstack(
         (contour_bottom, model_bottom*binning),
         dtype=object
@@ -191,29 +192,26 @@ def eval_single(
             )
             logging.info(f"Final stats after increased sampling: \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %\n")
 
-    save_figure(surface_info=surfaces,
-                save_path=f"./surface_models/{fname.stem}.png",
-                binning=binning_factor
-    )
     contours = save_text_model(surface_info=surfaces,
                     save_path=f"./surface_models/{fname.stem}.txt",
                     binning=binning_factor
     )
 
+    # Temporarily change ALL axis order from ZXY to XYZ
+    tomo_shape = np.roll(np.array(unbinned_shape), -1)
+    lamella_centroid = np.moveaxis(contours, 0, -1).mean(axis=1)
+
+    # Define Lamella as object (all length measurements in PIXELS!!)
+    lamella = Lamella(
+        centroid = lamella_centroid,
+        breadth = max(tomo_shape),
+        thickness = yz_mean[2] / params.pixel_size_nm,
+        xtilt = yz_mean[3],
+        ytilt = xz_mean[3]
+    )
+
+    # Output of 3D binary mask
     if params.output_mask:
-        # Temporarily change ALL axis order from ZXY to XYZ
-        tomo_shape = np.roll(np.array(unbinned_shape), -1)
-        lamella_centroid = np.moveaxis(contours, 0, -1).mean(axis=1)
-
-        # Define Lamella as object (all length measurements in PIXELS!!)
-        lamella = Lamella(
-            centroid = lamella_centroid,
-            breadth = 2*max(tomo_shape),
-            thickness = yz_mean[2] / params.pixel_size_nm,
-            xtilt = yz_mean[3],
-            ytilt = xz_mean[3]
-        )
-
         mask = np.moveaxis(get_intersection_mask(tomo_shape, lamella), -1, 0)
         with mrcfile.new(f"./volume_masks/{fname.stem}.mrc", overwrite=True) as f:
             f.set_data(mask.astype(np.int8))
@@ -222,7 +220,15 @@ def eval_single(
             combined = mask * tomo_orig
             f.set_data(combined.astype(np.float32))
 
+    top_surface, bottom_surface = get_statistical_surfaces(
+        lamella_obj = lamella,
+        num_points = 100
+    )
 
+    save_figure(surface_info=(*top_surface.T, *bottom_surface.T, None, None),
+                save_path=f"./surface_models/{fname.stem}.png",
+                binning=1
+    )
 
     return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces, binning_factor)
 
@@ -407,3 +413,38 @@ def get_intersection_mask(
     mask = np.all( object_vect <= 0.5, axis=1 ).reshape(tomo_shape)
 
     return mask
+
+
+def get_statistical_surfaces(
+        lamella_obj: Lamella,
+        num_points: int=100,
+) -> (np.ndarray, np.ndarray):
+    """
+    Calculate the top and bottom surfaces of lamella using evaluated geometry. Analogous to CBS:interpolate_surfaces.
+
+    Args:
+    lamella_obj (Lamella) : input Lamella object including essential lamella information
+    num_points (int) : number of points per dimension for interpolation
+
+    Returns:
+    ndarray, ndarray
+    """
+    _, cell_vecs = get_lamella_orientations(
+        lamella_obj = lamella_obj
+    )
+    (b1, b2, t) = cell_vecs
+
+    top_ref_pt = lamella_obj.centroid + 0.5 * (-b1 - b2 + t)
+    bottom_ref_pt = lamella_obj.centroid - 0.5 * (b1 + b2 + t)
+
+    gridpoints_linspace = np.linspace(0, 1, num_points)
+    gp_mesh_1, gp_mesh_2 = np.meshgrid(gridpoints_linspace, gridpoints_linspace)
+
+    b1_mesh = np.repeat(gp_mesh_1[..., np.newaxis], 3, axis=2) @ b1
+    b2_mesh = np.repeat(gp_mesh_2[..., np.newaxis], 3, axis=2) @ b2
+    t_mesh = b1_mesh + b2_mesh
+
+    top_surface = np.dstack((b1_mesh, b2_mesh, t_mesh)) + top_ref_pt
+    bottom_surface = np.dstack((b1_mesh, b2_mesh, t_mesh)) + bottom_ref_pt
+
+    return top_surface.astype(np.float64), bottom_surface.astype(np.float64)
