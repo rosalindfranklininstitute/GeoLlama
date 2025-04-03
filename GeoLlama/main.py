@@ -105,7 +105,7 @@ def main(
             int,
             typer.Option(
             "-b", "--bin",
-            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (128, 128) to (256, 256). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 8 or -b 16. Use 0 (default) for auto-binning."),
+            help="Additional binning factor for GeoLlama tomogram evaluation. Overall tomogram binning factor for evaluation is the product of the reconstruction and GeoLlama (this parameter) binning factors. Recommended overall binning factor is 16 or 32 -- e.g. if input tomogram is binned by 4 at reconstruction, recommended parameter would be 4 or 8. Use 0 (default) for auto-binning."),
         ] = 0,
         num_cores: Annotated[
             int,
@@ -264,7 +264,7 @@ def main(
 
         with Profiler(interval=0.01) as profile:
             filelist = evaluate.find_files(path=params.data_path)
-            raw_df, show_df = evaluate.eval_batch(
+            raw_df, analytics_df, show_df, adaptive_count = evaluate.eval_batch(
                 filelist=filelist,
                 params=params
             )
@@ -273,7 +273,7 @@ def main(
         profile.print()
     else:
         filelist = evaluate.find_files(path=params.data_path)
-        raw_df, analytics_df, show_df = evaluate.eval_batch(
+        raw_df, analytics_df, show_df, adaptive_count = evaluate.eval_batch(
             filelist=filelist,
             params=params
         )
@@ -302,6 +302,7 @@ done
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
         "time_elapsed": [ re.sub("\s", "", re.sub("day[s]*,", "D", str(end_time - start_time))) ],
+        "adaptive_count": adaptive_count,
         "thickness_lower_limit": params.thickness_lower_limit,
         "thickness_upper_limit": params.thickness_upper_limit,
         "thickness_std_limit": params.thickness_std_limit,

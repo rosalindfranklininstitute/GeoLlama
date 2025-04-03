@@ -175,6 +175,7 @@ def eval_single(
     )
 
     # Adaptive mode
+    adaptive_triggered = False
     if params.adaptive:
         criteria = [
             yz_sem[0] > 5,
@@ -182,6 +183,7 @@ def eval_single(
             yz_sem[3] > 5
         ]
         if np.any(criteria):
+            adaptive_triggered = True
             logging.info(f"Adaptive mode triggered for {fname.name}. \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %")
             yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
                 volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
@@ -225,12 +227,16 @@ def eval_single(
         num_points = 100
     )
 
-    save_figure(surface_info=(*top_surface.T, *bottom_surface.T, None, None),
+    # save_figure(surface_info=(*top_surface.T, *bottom_surface.T, None, None),
+    #             save_path=f"./surface_models/{fname.stem}.png",
+    #             binning=1
+    # )
+    save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
-                binning=1
+                binning=binning_factor
     )
 
-    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces, binning_factor)
+    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces, binning_factor, adaptive_triggered)
 
 
 def eval_batch(
@@ -265,10 +271,12 @@ def eval_batch(
     xtilt_list = []
     ytilt_list = []
 
+    adaptive_list = []
+
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist, total=len(filelist)):
-            _, _, yz_mean, xz_mean, yz_sem, xz_sem, _, binning = eval_single(
+            _, _, yz_mean, xz_mean, yz_sem, xz_sem, _, binning, adaptive_triggered = eval_single(
                 fname=tomo,
                 params=params
             )
@@ -283,6 +291,8 @@ def eval_batch(
             thickness_sem_list.append(yz_sem[2])
             xtilt_sem_list.append(yz_sem[3])
             ytilt_sem_list.append(xz_sem[3])
+
+            adaptive_list.append(adaptive_triggered)
 
     for idx, _ in enumerate(filelist):
         drift_list.append(f"{drift_mean_list[idx]:.2f} +/- {drift_sem_list[idx]:.2f}")
@@ -354,7 +364,7 @@ def eval_batch(
         }
     )
 
-    return (raw_data, analytics_data, show_data)
+    return (raw_data, analytics_data, show_data, np.sum(adaptive_list))
 
 
 def get_lamella_orientations(
