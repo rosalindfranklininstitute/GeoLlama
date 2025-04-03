@@ -30,8 +30,8 @@ import numpy as np
 import pandas as pd
 import mrcfile
 
-from GeoLlama import evaluate as EV
-from GeoLlama import config
+from geollama import evaluate as EV
+from geollama import config
 
 
 class EvaluateTest(unittest.TestCase):

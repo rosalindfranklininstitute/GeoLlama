@@ -27,7 +27,7 @@ import numpy.typing as npt
 import mrcfile
 from skimage.transform import downscale_local_mean as DSLM
 
-from GeoLlama import objects
+from geollama import objects
 
 
 def read_mrc(fname: str,

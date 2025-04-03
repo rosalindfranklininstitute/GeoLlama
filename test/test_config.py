@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 import starfile
 
-from GeoLlama import (config, objects)
+from geollama import (config, objects)
 
 
 class ConfigTest(unittest.TestCase):

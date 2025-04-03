@@ -40,10 +40,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import mrcfile
 
-from GeoLlama.prog_bar import (prog_bar, clear_tasks)
-from GeoLlama import io
-from GeoLlama import calc_by_slice as CBS
-from GeoLlama import objects
+from geollama.prog_bar import (prog_bar, clear_tasks)
+from geollama import io
+from geollama import calc_by_slice as CBS
+from geollama import objects
 
 logging.basicConfig(level=logging.INFO,
                     format="%(message)s",

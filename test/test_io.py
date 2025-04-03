@@ -28,7 +28,7 @@ import unittest
 import numpy as np
 import mrcfile
 
-from GeoLlama import (io, config)
+from geollama import (io, config)
 
 
 class IOSmokeTest(unittest.TestCase):

@@ -35,11 +35,11 @@ import sys
 
 import typer
 
-from GeoLlama import io
-from GeoLlama import config
-from GeoLlama import evaluate
-from GeoLlama import calc_by_slice as CBS
-from GeoLlama import report
+from geollama import io
+from geollama import config
+from geollama import evaluate
+from geollama import calc_by_slice as CBS
+from geollama import report
 
 
 VERSION = "1.0.0"

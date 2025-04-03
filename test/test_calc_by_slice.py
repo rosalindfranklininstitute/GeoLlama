@@ -24,7 +24,7 @@ from types import NoneType
 
 import numpy as np
 
-from GeoLlama import calc_by_slice as CBS
+from geollama import calc_by_slice as CBS
 
 
 class CalcBySliceTest(unittest.TestCase):

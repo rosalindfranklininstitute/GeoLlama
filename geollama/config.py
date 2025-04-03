@@ -25,7 +25,7 @@ import typing
 from pathlib import Path
 import multiprocessing as mp
 
-from GeoLlama import objects
+from geollama import objects
 
 
 def generate_config(output_path):
