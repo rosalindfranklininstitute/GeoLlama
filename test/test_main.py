@@ -99,15 +99,17 @@ class MainTest(unittest.TestCase):
                                           "Num_possible_anomalies",
                                       ]
         )
+        adaptive_count = 0
 
 
-        with mock.patch.object(evaluate, "eval_batch", return_value=(raw_df, analytics_df, show_df)) as m:
+        with mock.patch.object(evaluate, "eval_batch", return_value=(raw_df, analytics_df, show_df, adaptive_count)) as m:
             main.main(
                 data_path = "../data",
                 pixel_size_nm = 1,
                 output_csv_path = "./test.csv",
                 output_star_path = "./test.star",
-                report = False
+                report = False,
+                printout = False,
             )
 
             # Test if files are created

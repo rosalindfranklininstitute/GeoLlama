@@ -22,26 +22,18 @@
 import os
 from datetime import datetime as dt
 import logging
+import re
 
 os.environ["OMP_NUM_THREADS"] = '1'
 os.environ["OPENBLAS_NUM_THREADS"] = '1'
 os.environ["MKL_NUM_THREADS"] = '1'
 
-from pprint import pprint
 from pathlib import Path
 import typing
 from typing_extensions import Annotated
 import sys
-import multiprocessing as mp
-import pandas as pd
-
-from cProfile import Profile
-from pstats import SortKey, Stats
-from pyinstrument import Profiler
 
 import typer
-import starfile
-from tabulate import tabulate
 
 from GeoLlama import io
 from GeoLlama import config
@@ -51,7 +43,22 @@ from GeoLlama import report
 
 
 VERSION = "1.0.0"
-app = typer.Typer()
+
+def callback():
+    pass
+
+app = typer.Typer(callback=callback)
+
+@app.callback()
+def callback(
+        dev_mode: Annotated[
+            bool,
+            typer.Option(
+                "-d", "--dev_mode",
+                help="Developer mode. If true, verbose error messages and tracebacks (with full printout of local variables) will be enabled.",)
+        ] = False,
+):
+    app.pretty_exceptions_show_locals = dev_mode
 
 
 @app.command()
@@ -85,7 +92,7 @@ def main(
         ] = False,
         data_path: Annotated[
             typing.Optional[str],
-            typer.Option("-p", "--path",
+            typer.Option("-p", "--data_path",
                          help="Path to folder holding all tomograms. (NB. Direct path to individual tomogram file not supported.)"),
         ] = None,
         pixel_size_nm: Annotated[
@@ -98,12 +105,12 @@ def main(
             int,
             typer.Option(
             "-b", "--bin",
-            help="Internal binning factor for tomogram evaluation. Recommended target x-y dimensions from (128, 128) to (256, 256). E.g. if input tomogram has shape (2048, 2048, 2048), use -b 8 or -b 16. Use 0 (default) for auto-binning."),
+            help="Additional binning factor for GeoLlama tomogram evaluation. Overall tomogram binning factor for evaluation is the product of the reconstruction and GeoLlama (this parameter) binning factors. Recommended overall binning factor is 16 or 32 -- e.g. if input tomogram is binned by 4 at reconstruction, recommended parameter would be 4 or 8. Use 0 (default) for auto-binning."),
         ] = 0,
         num_cores: Annotated[
             int,
             typer.Option(
-                "-np", "--num_proc",
+                "-np", "--num_cores",
                 help="Number of CPUs used."),
         ] = 1,
         output_csv_path: Annotated[
@@ -122,7 +129,7 @@ def main(
             bool,
             typer.Option(
                 "-m", "--mask",
-                help="Output volumetric binary masks."),
+                help="Output volumetric binary masks. If true, masks will be saved in ./volume_masks/ with same filenames as input tomogram."),
         ] = False,
 
         thickness_lower_limit: Annotated[
@@ -203,6 +210,11 @@ def main(
     # Record application start time
     start_time = dt.now()
 
+    # Library loading
+    import starfile
+    from tabulate import tabulate
+    import pandas as pd
+
 
     if input_config is not None:
         params = config.read_config(input_config)
@@ -224,6 +236,7 @@ def main(
             output_star_path=output_star_path,
             output_mask=output_mask,
             generate_report=report,
+            printout=printout,
             thickness_lower_limit=thickness_lower_limit,
             thickness_upper_limit=thickness_upper_limit,
             thickness_std_limit=thickness_std_limit,
@@ -244,9 +257,14 @@ def main(
         Path("volume_masks").mkdir()
 
     if profiling:
+        # Only import profiling related libraries when needed
+        from cProfile import Profile
+        from pstats import SortKey, Stats
+        from pyinstrument import Profiler
+
         with Profiler(interval=0.01) as profile:
             filelist = evaluate.find_files(path=params.data_path)
-            raw_df, show_df = evaluate.eval_batch(
+            raw_df, analytics_df, show_df, adaptive_count = evaluate.eval_batch(
                 filelist=filelist,
                 params=params
             )
@@ -255,7 +273,7 @@ def main(
         profile.print()
     else:
         filelist = evaluate.find_files(path=params.data_path)
-        raw_df, analytics_df, show_df = evaluate.eval_batch(
+        raw_df, analytics_df, show_df, adaptive_count = evaluate.eval_batch(
             filelist=filelist,
             params=params
         )
@@ -283,7 +301,8 @@ done
         "model_folder": [str(Path("./surface_models").resolve())+'/'],
         "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
         "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
-        "time_elapsed": [str(end_time - start_time)],
+        "time_elapsed": [ re.sub("\s", "", re.sub("day[s]*,", "D", str(end_time - start_time))) ],
+        "adaptive_count": adaptive_count,
         "thickness_lower_limit": params.thickness_lower_limit,
         "thickness_upper_limit": params.thickness_upper_limit,
         "thickness_std_limit": params.thickness_std_limit,
@@ -357,6 +376,11 @@ def generate_report(
             typer.Option(help="Export report to HTML."),
         ] = True,
 ):
+    try:
+        not Path(report_path).exists()
+    except:
+        logging.warning("Existing report with same name found and will be replaced.")
+
     report.generate_report(
         report_path = Path(report_path),
         star_path = Path(star_path),

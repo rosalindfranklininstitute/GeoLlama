@@ -61,7 +61,6 @@ class ConfigTest(unittest.TestCase):
 
         # Test if config file is read correctly
         params = config.read_config("./config.yaml")
-        print(params)
 
         self.assertTrue(isinstance(params, objects.Config))
         self.assertIsNone(params.data_path)
@@ -95,6 +94,7 @@ class ConfigTest(unittest.TestCase):
             output_star_path = None,
             generate_report = False,
             output_mask = False,
+            printout = False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
@@ -114,6 +114,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.output_csv_path, None)
         self.assertEqual(params.output_star_path, None)
         self.assertFalse(params.output_mask)
+        self.assertFalse(params.printout)
         self.assertFalse(params.generate_report)
         self.assertEqual(params.thickness_lower_limit, 120)
         self.assertEqual(params.thickness_upper_limit, 300)
@@ -135,6 +136,7 @@ class ConfigTest(unittest.TestCase):
             output_csv_path = None,
             output_star_path = None,
             output_mask = False,
+            printout = False,
             generate_report = False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,

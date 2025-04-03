@@ -68,6 +68,7 @@ class EvaluateTest(unittest.TestCase):
             output_star_path=None,
             generate_report=False,
             output_mask=False,
+            printout=False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
@@ -130,9 +131,9 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_eval_single(self):
-        self.assertEqual(len(self._single_out), 8)
+        self.assertEqual(len(self._single_out), 9)
 
-        stats_1, stats_2, mean_1, mean_2, std_1, std_2, surface, binning = self._single_out
+        stats_1, stats_2, mean_1, mean_2, std_1, std_2, surface, binning, _ = self._single_out
         self.assertIsInstance(stats_1, np.ndarray)
         self.assertIsInstance(stats_2, np.ndarray)
         self.assertIsInstance(mean_1, np.ndarray)
@@ -150,9 +151,9 @@ class EvaluateTest(unittest.TestCase):
             filelist=filelist,
             params=self.params
         )
-        self.assertEqual(len(out), 3)
+        self.assertEqual(len(out), 4)
 
-        raw_df, analytics_df, show_df = out
+        raw_df, analytics_df, show_df, _ = out
         self.assertIsInstance(raw_df, pd.DataFrame)
         self.assertIsInstance(analytics_df, pd.DataFrame)
         self.assertIsInstance(show_df, pd.DataFrame)

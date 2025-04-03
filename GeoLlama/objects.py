@@ -36,6 +36,7 @@ class Config:
     output_star_path: typing.Optional[str] = None
     generate_report: typing.Optional[bool] = None
     output_mask: typing.Optional[bool] = None
+    printout: typing.Optional[bool] = None
     thickness_lower_limit: typing.Optional[float] = None
     thickness_upper_limit: typing.Optional[float] = None
     thickness_std_limit: typing.Optional[float] = None
