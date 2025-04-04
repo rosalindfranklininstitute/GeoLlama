@@ -89,13 +89,11 @@ displacement_std_limit : 5
     yaml = ruamel.yaml.YAML()
     data = yaml.load(config_str)
 
-    yaml.default_flow_style=False
+    yaml.default_flow_style = False
     yaml.dump(data, Path(output_path))
 
 
-def read_config(
-        config_fname: str
-) -> objects.Config:
+def read_config(config_fname: str) -> objects.Config:
     """
     Parse GeoLlama config YAML file
 
@@ -127,25 +125,24 @@ def read_config(
 
 
 def objectify_user_input(
-        autocontrast: typing.Optional[bool],
-        adaptive: typing.Optional[bool],
-        bandpass: typing.Optional[bool],
-        data_path: typing.Optional[str],
-        pixel_size_nm: typing.Optional[float],
-        binning: typing.Optional[int],
-        num_cores: typing.Optional[int],
-        output_csv_path: typing.Optional[str],
-        output_star_path: typing.Optional[str],
-        output_mask: typing.Optional[bool],
-        generate_report: typing.Optional[bool],
-        printout: typing.Optional[bool],
-
-        thickness_lower_limit: typing.Optional[float],
-        thickness_upper_limit: typing.Optional[float],
-        thickness_std_limit: typing.Optional[float],
-        xtilt_std_limit: typing.Optional[float],
-        displacement_limit : typing.Optional[float],
-        displacement_std_limit : typing.Optional[float],
+    autocontrast: typing.Optional[bool],
+    adaptive: typing.Optional[bool],
+    bandpass: typing.Optional[bool],
+    data_path: typing.Optional[str],
+    pixel_size_nm: typing.Optional[float],
+    binning: typing.Optional[int],
+    num_cores: typing.Optional[int],
+    output_csv_path: typing.Optional[str],
+    output_star_path: typing.Optional[str],
+    output_mask: typing.Optional[bool],
+    generate_report: typing.Optional[bool],
+    printout: typing.Optional[bool],
+    thickness_lower_limit: typing.Optional[float],
+    thickness_upper_limit: typing.Optional[float],
+    thickness_std_limit: typing.Optional[float],
+    xtilt_std_limit: typing.Optional[float],
+    displacement_limit: typing.Optional[float],
+    displacement_std_limit: typing.Optional[float],
 ) -> objects.Config:
     """
     Objectifying user provided input as a Config object
@@ -179,9 +176,7 @@ def objectify_user_input(
     return params
 
 
-def check_config(
-        params: objects.Config
-):
+def check_config(params: objects.Config):
     """
     Check datatypes in parameters
 
@@ -202,7 +197,11 @@ def check_config(
     if not isinstance(params.num_cores, int):
         raise ValueError("num_cores (-np) must be an integer.")
     elif not 1 <= params.num_cores <= mp.cpu_count():
-        raise ValueError(f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}). Current settings: {params.num_cores}")
+        raise ValueError(
+            f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}). Current settings: {params.num_cores}"
+        )
 
     if params.generate_report and params.output_star_path is None:
-        raise ValueError("Output STAR file must be specified for automatic report generation.")
+        raise ValueError(
+            "Output STAR file must be specified for automatic report generation."
+        )

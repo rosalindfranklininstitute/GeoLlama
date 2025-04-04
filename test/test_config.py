@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 import starfile
 
-from geollama import (config, objects)
+from geollama import config, objects
 
 
 class ConfigTest(unittest.TestCase):
@@ -42,17 +42,14 @@ class ConfigTest(unittest.TestCase):
         os.mkdir(f"{self.tmpdir.name}/data")
         os.mkdir(f"{self.tmpdir.name}/anlys")
 
-
     def setUp(self):
         pass
-
 
     def test_generate_config(self):
         os.chdir(f"{self.tmpdir.name}/anlys")
 
         config.generate_config(f"./new_config.yaml")
         self.assertTrue(os.path.exists("./new_config.yaml"))
-
 
     def test_read_config(self):
         # Generate default config file
@@ -80,21 +77,20 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.displacement_limit, 25)
         self.assertEqual(params.displacement_std_limit, 5)
 
-
     def test_objectify_user_input(self):
         params = config.objectify_user_input(
-            autocontrast = False,
-            adaptive = False,
-            bandpass = False,
-            data_path = None,
-            pixel_size_nm = None,
-            binning = 1,
-            num_cores = 1,
-            output_csv_path = None,
-            output_star_path = None,
-            generate_report = False,
-            output_mask = False,
-            printout = False,
+            autocontrast=False,
+            adaptive=False,
+            bandpass=False,
+            data_path=None,
+            pixel_size_nm=None,
+            binning=1,
+            num_cores=1,
+            output_csv_path=None,
+            output_star_path=None,
+            generate_report=False,
+            output_mask=False,
+            printout=False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
@@ -123,21 +119,20 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.displacement_limit, 25)
         self.assertEqual(params.displacement_std_limit, 5)
 
-
     def test_check_config(self):
         params = config.objectify_user_input(
-            data_path = f"{self.tmpdir.name}/data",
-            pixel_size_nm = 1,
-            binning = 1,
-            num_cores = 1,
-            autocontrast = False,
-            adaptive = False,
-            bandpass = False,
-            output_csv_path = None,
-            output_star_path = None,
-            output_mask = False,
-            printout = False,
-            generate_report = False,
+            data_path=f"{self.tmpdir.name}/data",
+            pixel_size_nm=1,
+            binning=1,
+            num_cores=1,
+            autocontrast=False,
+            adaptive=False,
+            bandpass=False,
+            output_csv_path=None,
+            output_star_path=None,
+            output_mask=False,
+            printout=False,
+            generate_report=False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
@@ -158,7 +153,9 @@ class ConfigTest(unittest.TestCase):
             config.check_config(params)
         self.assertNotEqual(cm.exception, 0)
 
-        params.data_path = f"{self.tmpdir.name}/data" # Reset params data_path to acceptable value
+        params.data_path = (
+            f"{self.tmpdir.name}/data"  # Reset params data_path to acceptable value
+        )
 
         # Tests for wrong pixel size exception handling
         params.pixel_size_nm = None
@@ -171,7 +168,7 @@ class ConfigTest(unittest.TestCase):
             config.check_config(params)
         self.assertNotEqual(cm.exception, 0)
 
-        params.pixel_size_nm = 1 # Reset params pixel_size_nm to acceptable value
+        params.pixel_size_nm = 1  # Reset params pixel_size_nm to acceptable value
 
         # Tests for wrong number of cores exception handling
         params.num_cores = 1.5
@@ -190,11 +187,9 @@ class ConfigTest(unittest.TestCase):
             config.check_config(params)
         self.assertNotEqual(cm.exception, 0)
 
-
     @classmethod
     def tearDownClass(self):
         self.tmpdir.cleanup()
-
 
     def tearDown(self):
         pass

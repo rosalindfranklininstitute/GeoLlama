@@ -40,25 +40,27 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import mrcfile
 
-from geollama.prog_bar import (prog_bar, clear_tasks)
+from geollama.prog_bar import prog_bar, clear_tasks
 from geollama import io
 from geollama import calc_by_slice as CBS
 from geollama import objects
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(message)s",
-                    datefmt="%d-%b-%y %H:%M:%S",
-                    handlers=[RichHandler()]
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+    handlers=[RichHandler()],
 )
 
 mpl.use("Agg")
 
 
 @dataclass
-class Lamella():
+class Lamella:
     """
     Object encapsulating estimated specifications of lamella
     """
+
     centroid: list
     thickness: float
     breadth: float
@@ -93,23 +95,25 @@ def save_figure(surface_info, save_path, binning):
     binning (int) : Internal binning factor of tomogram
     """
 
-    xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, _, _ = surface_info
+    xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, _, _ = (
+        surface_info
+    )
 
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"},
-                           figsize=(10, 10))
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, figsize=(10, 10))
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
     ax.plot_surface(
-        xx_top*binning,
-        yy_top*binning,
-        surface_top*binning,
-        rstride=5, cstride=5)
+        xx_top * binning, yy_top * binning, surface_top * binning, rstride=5, cstride=5
+    )
     ax.plot_surface(
-        xx_bottom*binning,
-        yy_bottom*binning,
-        surface_bottom*binning,
-        rstride=5, cstride=5, color="r")
+        xx_bottom * binning,
+        yy_bottom * binning,
+        surface_bottom * binning,
+        rstride=5,
+        cstride=5,
+        color="r",
+    )
     ax.view_init(elev=0, azim=-80)
 
     plt.savefig(save_path)
@@ -125,19 +129,24 @@ def save_text_model(surface_info, save_path, binning):
     save_path (str) : Path to text file being exported
     binning (int) : Internal binning factor of tomogram
     """
-    xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, model_top, model_bottom = surface_info
+    (
+        xx_top,
+        yy_top,
+        surface_top,
+        xx_bottom,
+        yy_bottom,
+        surface_bottom,
+        model_top,
+        model_bottom,
+    ) = surface_info
 
-    contour_top = np.tile(range(1, len(model_top)//2+1), 2)[:, np.newaxis]
-    full_list_top = np.hstack(
-        (contour_top, model_top*binning),
-        dtype=object
-    )
+    contour_top = np.tile(range(1, len(model_top) // 2 + 1), 2)[:, np.newaxis]
+    full_list_top = np.hstack((contour_top, model_top * binning), dtype=object)
 
-    contour_bottom = np.tile(range(len(model_top)//2+1, len(model_bottom)+1), 2)[:, np.newaxis]
-    full_list_bottom = np.hstack(
-        (contour_bottom, model_bottom*binning),
-        dtype=object
-    )
+    contour_bottom = np.tile(range(len(model_top) // 2 + 1, len(model_bottom) + 1), 2)[
+        :, np.newaxis
+    ]
+    full_list_bottom = np.hstack((contour_bottom, model_bottom * binning), dtype=object)
 
     full_contours = np.vstack((full_list_top, full_list_bottom), dtype=object)
     full_contours[:, 2] += 0.5
@@ -147,10 +156,7 @@ def save_text_model(surface_info, save_path, binning):
     return full_contours[:, 1:]
 
 
-def eval_single(
-        fname: str,
-        params: objects.Config
-) -> objects.Result:
+def eval_single(fname: str, params: objects.Config) -> objects.Result:
     """
     Evaluate geometry of a single tomogram given source file
 
@@ -163,40 +169,48 @@ def eval_single(
     """
 
     tomo, binned_pixel_size, unbinned_shape, binning_factor, tomo_orig = io.read_mrc(
-        fname=fname,
-        params=params
+        fname=fname, params=params
     )
 
-    yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
-        volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
-        pixel_size_nm=binned_pixel_size,
-        cpu=params.num_cores,
-        autocontrast=params.autocontrast,
+    yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = (
+        CBS.evaluate_full_lamella(
+            volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
+            pixel_size_nm=binned_pixel_size,
+            cpu=params.num_cores,
+            autocontrast=params.autocontrast,
+        )
     )
 
     # Adaptive mode
     adaptive_triggered = False
     if params.adaptive:
-        criteria = [
-            yz_sem[0] > 5,
-            yz_sem[2] > 20,
-            yz_sem[3] > 5
-        ]
+        criteria = [yz_sem[0] > 5, yz_sem[2] > 20, yz_sem[3] > 5]
         if np.any(criteria):
             adaptive_triggered = True
-            logging.info(f"Adaptive mode triggered for {fname.name}. \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %")
-            yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = CBS.evaluate_full_lamella(
-                volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
-                pixel_size_nm=binned_pixel_size,
-                cpu=params.num_cores*2 if params.num_cores <= mp.cpu_count()//3 else params.num_cores,
-                autocontrast=params.autocontrast,
-                step_pct=1.25,
+            logging.info(
+                f"Adaptive mode triggered for {fname.name}. \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %"
             )
-            logging.info(f"Final stats after increased sampling: \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %\n")
+            yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces = (
+                CBS.evaluate_full_lamella(
+                    volume=CBS.filter_bandpass(tomo) if params.bandpass else tomo,
+                    pixel_size_nm=binned_pixel_size,
+                    cpu=(
+                        params.num_cores * 2
+                        if params.num_cores <= mp.cpu_count() // 3
+                        else params.num_cores
+                    ),
+                    autocontrast=params.autocontrast,
+                    step_pct=1.25,
+                )
+            )
+            logging.info(
+                f"Final stats after increased sampling: \nthickness = {yz_mean[2]:>3.3f} +/- {yz_sem[2]:>3.3f} nm \nxtilt     = {yz_mean[3]:>3.3f} +/- {yz_sem[3]:>3.3f} degs \ndrift     = {yz_mean[0]:>3.3f} +/- {yz_sem[0]:>3.3f} %\n"
+            )
 
-    contours = save_text_model(surface_info=surfaces,
-                    save_path=f"./surface_models/{fname.stem}.txt",
-                    binning=binning_factor
+    contours = save_text_model(
+        surface_info=surfaces,
+        save_path=f"./surface_models/{fname.stem}.txt",
+        binning=binning_factor,
     )
 
     # Temporarily change ALL axis order from ZXY to XYZ
@@ -205,11 +219,11 @@ def eval_single(
 
     # Define Lamella as object (all length measurements in PIXELS!!)
     lamella = Lamella(
-        centroid = lamella_centroid,
-        breadth = max(tomo_shape),
-        thickness = yz_mean[2] / params.pixel_size_nm,
-        xtilt = yz_mean[3],
-        ytilt = xz_mean[3]
+        centroid=lamella_centroid,
+        breadth=max(tomo_shape),
+        thickness=yz_mean[2] / params.pixel_size_nm,
+        xtilt=yz_mean[3],
+        ytilt=xz_mean[3],
     )
 
     # Output of 3D binary mask
@@ -218,52 +232,45 @@ def eval_single(
         with mrcfile.new(f"./volume_masks/{fname.stem}.mrc", overwrite=True) as f:
             f.set_data(mask.astype(np.int8))
 
-        with mrcfile.new(f"./volume_masks/{fname.stem}_verify.mrc", overwrite=True) as f:
+        with mrcfile.new(
+            f"./volume_masks/{fname.stem}_verify.mrc", overwrite=True
+        ) as f:
             combined = mask * tomo_orig
             f.set_data(combined.astype(np.float32))
 
     top_surface, bottom_surface = get_statistical_surfaces(
-        lamella_obj = lamella,
-        num_points = 100
+        lamella_obj=lamella, num_points=100
     )
 
-    save_figure(surface_info=surfaces,
-                save_path=f"./surface_models/{fname.stem}.png",
-                binning=binning_factor
+    save_figure(
+        surface_info=surfaces,
+        save_path=f"./surface_models/{fname.stem}.png",
+        binning=binning_factor,
     )
 
     single_result = objects.Result(
-        yz_stats = yz_stats,
-        xz_stats = xz_stats,
-        yz_mean = yz_mean,
-        xz_mean = xz_mean,
-        yz_sem = yz_sem,
-        xz_sem = xz_sem,
-        surfaces = surfaces,
-        binning_factor = binning_factor,
-        adaptive_triggered = adaptive_triggered
+        yz_stats=yz_stats,
+        xz_stats=xz_stats,
+        yz_mean=yz_mean,
+        xz_mean=xz_mean,
+        yz_sem=yz_sem,
+        xz_sem=xz_sem,
+        surfaces=surfaces,
+        binning_factor=binning_factor,
+        adaptive_triggered=adaptive_triggered,
     )
     return single_result
 
 
-def _eval_generator(
-        filelist_in: list,
-        params: objects.Config
-):
+def _eval_generator(filelist_in: list, params: objects.Config):
     with prog_bar as p:
         clear_tasks(p)
         for tomo in p.track(filelist_in, total=len(filelist_in)):
-            eval_result = eval_single(
-                fname=tomo,
-                params=params
-            )
+            eval_result = eval_single(fname=tomo, params=params)
             yield eval_result
 
 
-def eval_batch(
-        filelist: list,
-        params: objects.Config
-) -> (pd.DataFrame, pd.DataFrame):
+def eval_batch(filelist: list, params: objects.Config) -> (pd.DataFrame, pd.DataFrame):
     """
     Evaluate geometry of tomograms given path to folder containing tomograms, then output statistics as pandas DataFrames.
 
@@ -275,7 +282,7 @@ def eval_batch(
     DataFrame, DataFrame
     """
 
-    _results_list = list( _eval_generator(filelist, params) )
+    _results_list = list(_eval_generator(filelist, params))
 
     drift_mean_list = [obj.yz_mean[0] for obj in _results_list]
     thickness_mean_list = [obj.yz_mean[2] for obj in _results_list]
@@ -293,33 +300,58 @@ def eval_batch(
     drift_list, thickness_list, xtilt_list, ytilt_list = [], [], [], []
     for idx, _ in enumerate(filelist):
         drift_list.append(f"{drift_mean_list[idx]:.2f} +/- {drift_sem_list[idx]:.2f}")
-        thickness_list.append(f"{thickness_mean_list[idx]:.2f} +/- {thickness_sem_list[idx]:.2f}")
+        thickness_list.append(
+            f"{thickness_mean_list[idx]:.2f} +/- {thickness_sem_list[idx]:.2f}"
+        )
         xtilt_list.append(f"{xtilt_mean_list[idx]:.2f} +/- {xtilt_sem_list[idx]:.2f}")
         ytilt_list.append(f"{ytilt_mean_list[idx]:.2f} +/- {ytilt_sem_list[idx]:.2f}")
 
     # Calculate 90% CI of xtilt values
     xtilt_median = np.median(xtilt_array := np.array(xtilt_mean_list))
-    xtilt_head_to_centre = \
-        xtilt_median-xtilt_array.min() if skew(xtilt_array)>0 else xtilt_array.max()-xtilt_median
-    xtilt_symmetrise_limits = [xtilt_median-xtilt_head_to_centre, xtilt_median+xtilt_head_to_centre]
-    xtilt_symmetrised = np.where( np.logical_and(xtilt_array>=xtilt_symmetrise_limits[0], xtilt_array<=xtilt_symmetrise_limits[1]) )[0]
-    xtilt_thres = [np.median(xtilt_symmetrised)-3*np.std(xtilt_symmetrised), np.median(xtilt_symmetrised)+3*np.std(xtilt_symmetrised)]
+    xtilt_head_to_centre = (
+        xtilt_median - xtilt_array.min()
+        if skew(xtilt_array) > 0
+        else xtilt_array.max() - xtilt_median
+    )
+    xtilt_symmetrise_limits = [
+        xtilt_median - xtilt_head_to_centre,
+        xtilt_median + xtilt_head_to_centre,
+    ]
+    xtilt_symmetrised = np.where(
+        np.logical_and(
+            xtilt_array >= xtilt_symmetrise_limits[0],
+            xtilt_array <= xtilt_symmetrise_limits[1],
+        )
+    )[0]
+    xtilt_thres = [
+        np.median(xtilt_symmetrised) - 3 * np.std(xtilt_symmetrised),
+        np.median(xtilt_symmetrised) + 3 * np.std(xtilt_symmetrised),
+    ]
 
     # Detect potential anomalies
     anom_too_thin = np.array(thickness_mean_list) < params.thickness_lower_limit
     anom_too_thick = np.array(thickness_mean_list) >= params.thickness_upper_limit
     anom_thick_uncertain = np.array(thickness_sem_list) >= params.thickness_std_limit
-    anom_xtilt_oor = np.logical_or(xtilt_array<max(xtilt_thres[0], xtilt_symmetrise_limits[0]),
-                                   xtilt_array>min(xtilt_thres[1], xtilt_symmetrise_limits[1]))
+    anom_xtilt_oor = np.logical_or(
+        xtilt_array < max(xtilt_thres[0], xtilt_symmetrise_limits[0]),
+        xtilt_array > min(xtilt_thres[1], xtilt_symmetrise_limits[1]),
+    )
     anom_xtilt_uncertain = np.array(xtilt_sem_list) >= params.xtilt_std_limit
     anom_centroid_displaced = np.array(drift_mean_list) >= params.displacement_limit
     anom_wild_drift = np.array(drift_sem_list) > params.displacement_std_limit
 
-    anom_collated = np.stack((
-        anom_too_thin, anom_too_thick, anom_thick_uncertain,
-        anom_xtilt_oor, anom_xtilt_uncertain,
-        anom_centroid_displaced, anom_wild_drift
-    ), axis=1)
+    anom_collated = np.stack(
+        (
+            anom_too_thin,
+            anom_too_thick,
+            anom_thick_uncertain,
+            anom_xtilt_oor,
+            anom_xtilt_uncertain,
+            anom_centroid_displaced,
+            anom_wild_drift,
+        ),
+        axis=1,
+    )
     num_anom_categories = anom_collated.sum(axis=1)
 
     raw_data = pd.DataFrame(
@@ -347,26 +379,25 @@ def eval_batch(
             "Anom_xtilt_uncertain": anom_xtilt_uncertain,
             "Anom_centroid_displaced": anom_centroid_displaced,
             "Anom_wild_drift": anom_wild_drift,
-            "Num_possible_anomalies": num_anom_categories
+            "Num_possible_anomalies": num_anom_categories,
         }
     )
 
     show_data = pd.DataFrame(
-        {"filename": [f.name for f in filelist],
-         "Thickness (nm)": thickness_list,
-         "X-tilt (degs)": xtilt_list,
-         "Y-tilt (degs)": ytilt_list,
-         "Centroid drift (%)": drift_list,
-         "Num_possible_anomalies": num_anom_categories
+        {
+            "filename": [f.name for f in filelist],
+            "Thickness (nm)": thickness_list,
+            "X-tilt (degs)": xtilt_list,
+            "Y-tilt (degs)": ytilt_list,
+            "Centroid drift (%)": drift_list,
+            "Num_possible_anomalies": num_anom_categories,
         }
     )
 
     return (raw_data, analytics_data, show_data, np.sum(adaptive_list))
 
 
-def get_lamella_orientations(
-        lamella_obj: Lamella
-) -> (np.ndarray, np.ndarray):
+def get_lamella_orientations(lamella_obj: Lamella) -> (np.ndarray, np.ndarray):
     """
     Extracts the coordinates of the reference vertex of the lamella, and calculates the cell vector of the estimated lamella.
 
@@ -376,21 +407,30 @@ def get_lamella_orientations(
     Returns:
     ndarray, ndarray
     """
-    rotation_matrix = R.from_euler('yx', [lamella_obj.xtilt, -lamella_obj.ytilt], degrees=True)
-    lamella_cell_vectors = rotation_matrix.apply(np.diag([
-        lamella_obj.breadth,
-        lamella_obj.breadth,
-        lamella_obj.thickness,
-    ]))
+    rotation_matrix = R.from_euler(
+        "yx", [lamella_obj.xtilt, -lamella_obj.ytilt], degrees=True
+    )
+    lamella_cell_vectors = rotation_matrix.apply(
+        np.diag(
+            [
+                lamella_obj.breadth,
+                lamella_obj.breadth,
+                lamella_obj.thickness,
+            ]
+        )
+    )
 
-    lamella_ref_vertex = lamella_obj.centroid - 0.5*lamella_cell_vectors.sum(axis=0)
+    lamella_ref_vertex = lamella_obj.centroid - 0.5 * lamella_cell_vectors.sum(axis=0)
 
-    return (lamella_ref_vertex.astype(np.float32), lamella_cell_vectors.astype(np.float32))
+    return (
+        lamella_ref_vertex.astype(np.float32),
+        lamella_cell_vectors.astype(np.float32),
+    )
 
 
 def get_intersection_mask(
-        tomo_shape: list,
-        lamella_obj: Lamella,
+    tomo_shape: list,
+    lamella_obj: Lamella,
 ) -> np.ndarray:
     """
     Calculate volumetric mask for region estimated to be within lamella.
@@ -414,17 +454,21 @@ def get_intersection_mask(
     del X, Y, Z
 
     ref_vertex, lamella_vects = get_lamella_orientations(lamella_obj)
-    lamella_vects_norm2 = np.linalg.norm(lamella_vects, axis=1)**2
+    lamella_vects_norm2 = np.linalg.norm(lamella_vects, axis=1) ** 2
 
-    object_vect = np.abs(np.inner(np.subtract(tomo_coords, ref_vertex), lamella_vects) / lamella_vects_norm2 - 0.5)
-    mask = np.all( object_vect <= 0.5, axis=1 ).reshape(tomo_shape)
+    object_vect = np.abs(
+        np.inner(np.subtract(tomo_coords, ref_vertex), lamella_vects)
+        / lamella_vects_norm2
+        - 0.5
+    )
+    mask = np.all(object_vect <= 0.5, axis=1).reshape(tomo_shape)
 
     return mask
 
 
 def get_statistical_surfaces(
-        lamella_obj: Lamella,
-        num_points: int=100,
+    lamella_obj: Lamella,
+    num_points: int = 100,
 ) -> (np.ndarray, np.ndarray):
     """
     Calculate the top and bottom surfaces of lamella using evaluated geometry. Analogous to CBS:interpolate_surfaces.
@@ -436,9 +480,7 @@ def get_statistical_surfaces(
     Returns:
     ndarray, ndarray
     """
-    _, cell_vecs = get_lamella_orientations(
-        lamella_obj = lamella_obj
-    )
+    _, cell_vecs = get_lamella_orientations(lamella_obj=lamella_obj)
     (b1, b2, t) = cell_vecs
 
     top_ref_pt = lamella_obj.centroid + 0.5 * (-b1 - b2 + t)

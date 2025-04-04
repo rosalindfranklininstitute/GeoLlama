@@ -43,8 +43,8 @@ class Config:
     thickness_upper_limit: typing.Optional[float] = None
     thickness_std_limit: typing.Optional[float] = None
     xtilt_std_limit: typing.Optional[float] = None
-    displacement_limit : typing.Optional[float] = None
-    displacement_std_limit : typing.Optional[float] = None
+    displacement_limit: typing.Optional[float] = None
+    displacement_std_limit: typing.Optional[float] = None
 
 
 @dataclass()

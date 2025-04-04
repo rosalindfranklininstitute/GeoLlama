@@ -30,8 +30,9 @@ from skimage.transform import downscale_local_mean as DSLM
 from geollama import objects
 
 
-def read_mrc(fname: str,
-             params: objects.Config,
+def read_mrc(
+    fname: str,
+    params: objects.Config,
 ) -> (npt.NDArray[any], float):
     """
     Function to read in MRC image file.
@@ -52,11 +53,11 @@ def read_mrc(fname: str,
     # Determine binning factor if auto-binning used
     binning = params.binning
     if params.binning == 0:
-        binning = max(1, min(original_shape[1:])//128)
+        binning = max(1, min(original_shape[1:]) // 128)
         logging.info(f"AUTOBIN: {fname.name} - Binning factor={binning}")
 
     if binning > 1:
         data_ds = DSLM(data, (binning, binning, binning))
-        return (data_ds, params.pixel_size_nm*binning, original_shape, binning, data)
+        return (data_ds, params.pixel_size_nm * binning, original_shape, binning, data)
 
     return (data, params.pixel_size_nm, original_shape, binning, None)
