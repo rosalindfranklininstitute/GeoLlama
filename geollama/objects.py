@@ -22,6 +22,8 @@
 from dataclasses import dataclass
 import typing
 
+import numpy.typing as npt
+
 
 @dataclass()
 class Config:
@@ -43,3 +45,16 @@ class Config:
     xtilt_std_limit: typing.Optional[float] = None
     displacement_limit : typing.Optional[float] = None
     displacement_std_limit : typing.Optional[float] = None
+
+
+@dataclass()
+class Result:
+    yz_stats: npt.NDArray[any] = None
+    xz_stats: npt.NDArray[any] = None
+    yz_mean: npt.NDArray[any] = None
+    xz_mean: npt.NDArray[any] = None
+    yz_sem: npt.NDArray[any] = None
+    xz_sem: npt.NDArray[any] = None
+    surfaces: typing.Optional[tuple] = None
+    binning_factor: typing.Optional[int] = None
+    adaptive_triggered: typing.Optional[bool] = None

@@ -150,7 +150,7 @@ def save_text_model(surface_info, save_path, binning):
 def eval_single(
         fname: str,
         params: objects.Config
-):
+) -> objects.Result:
     """
     Evaluate geometry of a single tomogram given source file
 
@@ -159,7 +159,7 @@ def eval_single(
     params (Config) : Config object holding all parameters
 
     Returns:
-    ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray
+    objects.Result
     """
 
     tomo, binned_pixel_size, unbinned_shape, binning_factor, tomo_orig = io.read_mrc(
@@ -227,16 +227,37 @@ def eval_single(
         num_points = 100
     )
 
-    # save_figure(surface_info=(*top_surface.T, *bottom_surface.T, None, None),
-    #             save_path=f"./surface_models/{fname.stem}.png",
-    #             binning=1
-    # )
     save_figure(surface_info=surfaces,
                 save_path=f"./surface_models/{fname.stem}.png",
                 binning=binning_factor
     )
 
-    return (yz_stats, xz_stats, yz_mean, xz_mean, yz_sem, xz_sem, surfaces, binning_factor, adaptive_triggered)
+    single_result = objects.Result(
+        yz_stats = yz_stats,
+        xz_stats = xz_stats,
+        yz_mean = yz_mean,
+        xz_mean = xz_mean,
+        yz_sem = yz_sem,
+        xz_sem = xz_sem,
+        surfaces = surfaces,
+        binning_factor = binning_factor,
+        adaptive_triggered = adaptive_triggered
+    )
+    return single_result
+
+
+def _eval_generator(
+        filelist_in: list,
+        params: objects.Config
+):
+    with prog_bar as p:
+        clear_tasks(p)
+        for tomo in p.track(filelist_in, total=len(filelist_in)):
+            eval_result = eval_single(
+                fname=tomo,
+                params=params
+            )
+            yield eval_result
 
 
 def eval_batch(
@@ -254,46 +275,22 @@ def eval_batch(
     DataFrame, DataFrame
     """
 
-    binning_list = []
+    _results_list = list( _eval_generator(filelist, params) )
 
-    drift_mean_list = []
-    thickness_mean_list = []
-    xtilt_mean_list = []
-    ytilt_mean_list = []
+    drift_mean_list = [obj.yz_mean[0] for obj in _results_list]
+    thickness_mean_list = [obj.yz_mean[2] for obj in _results_list]
+    xtilt_mean_list = [obj.yz_mean[3] for obj in _results_list]
+    ytilt_mean_list = [obj.xz_mean[3] for obj in _results_list]
 
-    drift_sem_list = []
-    thickness_sem_list = []
-    xtilt_sem_list = []
-    ytilt_sem_list = []
+    drift_sem_list = [obj.yz_sem[0] for obj in _results_list]
+    thickness_sem_list = [obj.yz_sem[2] for obj in _results_list]
+    xtilt_sem_list = [obj.yz_sem[3] for obj in _results_list]
+    ytilt_sem_list = [obj.xz_sem[3] for obj in _results_list]
 
-    drift_list = []
-    thickness_list = []
-    xtilt_list = []
-    ytilt_list = []
+    binning_list = [obj.binning_factor for obj in _results_list]
+    adaptive_list = [obj.adaptive_triggered for obj in _results_list]
 
-    adaptive_list = []
-
-    with prog_bar as p:
-        clear_tasks(p)
-        for tomo in p.track(filelist, total=len(filelist)):
-            _, _, yz_mean, xz_mean, yz_sem, xz_sem, _, binning, adaptive_triggered = eval_single(
-                fname=tomo,
-                params=params
-            )
-
-            binning_list.append(binning)
-            drift_mean_list.append(yz_mean[0])
-            thickness_mean_list.append(yz_mean[2])
-            xtilt_mean_list.append(yz_mean[3])
-            ytilt_mean_list.append(xz_mean[3])
-
-            drift_sem_list.append(yz_sem[0])
-            thickness_sem_list.append(yz_sem[2])
-            xtilt_sem_list.append(yz_sem[3])
-            ytilt_sem_list.append(xz_sem[3])
-
-            adaptive_list.append(adaptive_triggered)
-
+    drift_list, thickness_list, xtilt_list, ytilt_list = [], [], [], []
     for idx, _ in enumerate(filelist):
         drift_list.append(f"{drift_mean_list[idx]:.2f} +/- {drift_sem_list[idx]:.2f}")
         thickness_list.append(f"{thickness_mean_list[idx]:.2f} +/- {thickness_sem_list[idx]:.2f}")
