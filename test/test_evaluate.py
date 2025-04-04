@@ -32,6 +32,7 @@ import mrcfile
 
 from geollama import evaluate as EV
 from geollama import config
+from geollama import objects
 
 
 class EvaluateTest(unittest.TestCase):
@@ -107,7 +108,7 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_save_figure(self):
-        surface_info = self._single_out[6]
+        surface_info = self._single_out.surfaces
         fig_path = Path(f"{self._models_folder}/test_fig.png")
         EV.save_figure(
             surface_info=surface_info,
@@ -119,7 +120,7 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_save_text_model(self):
-        surface_info = self._single_out[6]
+        surface_info = self._single_out.surfaces
         fig_path = Path(f"{self._models_folder}/test_fig.txt")
         EV.save_text_model(
             surface_info=surface_info,
@@ -131,16 +132,18 @@ class EvaluateTest(unittest.TestCase):
 
 
     def test_eval_single(self):
-        self.assertEqual(len(self._single_out), 9)
+        self.assertIsInstance(self._single_out, objects.Result)
+        print(type(self._single_out.surfaces))
 
-        stats_1, stats_2, mean_1, mean_2, std_1, std_2, surface, binning, _ = self._single_out
-        self.assertIsInstance(stats_1, np.ndarray)
-        self.assertIsInstance(stats_2, np.ndarray)
-        self.assertIsInstance(mean_1, np.ndarray)
-        self.assertIsInstance(mean_2, np.ndarray)
-        self.assertIsInstance(std_1, np.ndarray)
-        self.assertIsInstance(std_2, np.ndarray)
-        self.assertIsInstance(binning, int)
+        self.assertIsInstance(self._single_out.yz_stats, np.ndarray)
+        self.assertIsInstance(self._single_out.xz_stats, np.ndarray)
+        self.assertIsInstance(self._single_out.yz_mean, np.ndarray)
+        self.assertIsInstance(self._single_out.xz_mean, np.ndarray)
+        self.assertIsInstance(self._single_out.yz_sem, np.ndarray)
+        self.assertIsInstance(self._single_out.xz_sem, np.ndarray)
+        self.assertIsInstance(self._single_out.surfaces, tuple)
+        self.assertIsInstance(self._single_out.binning_factor, int)
+        self.assertIsInstance(self._single_out.adaptive_triggered, bool)
 
 
     def test_eval_batch(self):
