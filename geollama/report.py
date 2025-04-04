@@ -31,9 +31,7 @@ import json
 import papermill as pm
 
 
-def read_ipynb(
-        ipynb_path: Path
-) -> dict:
+def read_ipynb(ipynb_path: Path) -> dict:
     """
     Reads in a Jupyter notebook and returns the underlying JSON as a dict.
 
@@ -43,14 +41,14 @@ def read_ipynb(
     Returns:
     dict
     """
-    nb = pkg_resources.resource_filename("GeoLlama.templates", ipynb_path)
+    nb = pkg_resources.resource_filename("geollama.templates", ipynb_path)
     with open(nb, "r") as f:
         return json.load(f)
 
 
 def write_ipynb(
-        ipynb_path: Path,
-        nb_data: dict,
+    ipynb_path: Path,
+    nb_data: dict,
 ):
     """
     Write out Jupyter notebook with given data / metadata
@@ -66,11 +64,7 @@ def write_ipynb(
         json.dump(nb_data, f)
 
 
-def generate_report(
-        report_path: Path,
-        star_path: Path,
-        to_html: bool=False
-):
+def generate_report(report_path: Path, star_path: Path, to_html: bool = False):
     """
     Generates temporary Jupyter notebook and converts it using papermill
 
@@ -82,7 +76,9 @@ def generate_report(
     if report_path.exists():
         warnings.warn(f"{report_path} exists. Old report will be rewritten.")
     if report_path.suffix != ".ipynb":
-        warnings.warn(f"Output to {report_path.suffix} format is not currently supported. Report will be saved as {report_path.stem}.ipynb.")
+        warnings.warn(
+            f"Output to {report_path.suffix} format is not currently supported. Report will be saved as {report_path.stem}.ipynb."
+        )
         report_path = Path(f"{report_path.parent}/{report_path.stem}.ipynb")
 
     # Read in report template and write out temporary report for execution
@@ -96,7 +92,7 @@ def generate_report(
         parameters={
             "starfile_path": str(star_path),
         },
-        kernel="python3"
+        kernel="python3",
     )
 
     Path(f"{report_path.parent}/{report_path.stem}_tmp.ipynb").unlink()
@@ -104,16 +100,18 @@ def generate_report(
     # Convert report to HTML format
     if to_html:
         cmd = [
-            "jupyter-nbconvert", "--to", "html",
+            "jupyter-nbconvert",
+            "--to",
+            "html",
             "--TemplateExporter.exclude_input=True",
-            f"{report_path}"
+            f"{report_path}",
         ]
         run_cmd = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             encoding="ascii",
-            check=True
+            check=True,
         )
 
         try:

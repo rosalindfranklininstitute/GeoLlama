@@ -32,6 +32,7 @@ import mrcfile
 
 from geollama import evaluate as EV
 from geollama import config
+from geollama import objects
 
 
 class EvaluateTest(unittest.TestCase):
@@ -79,24 +80,15 @@ class EvaluateTest(unittest.TestCase):
 
         # Run single analysis to get output for subsequent tests
         os.chdir(self._anlys_folder)
-        self._single_out = EV.eval_single(
-            fname=self._data_address,
-            params=self.params
-        )
+        self._single_out = EV.eval_single(fname=self._data_address, params=self.params)
 
         # Set up a dummy Lamella object
         self._my_lamella = EV.Lamella(
-            centroid = [50, 50, 50],
-            breadth = 100,
-            thickness = 50,
-            xtilt = 0,
-            ytilt = 0
+            centroid=[50, 50, 50], breadth=100, thickness=50, xtilt=0, ytilt=0
         )
-
 
     def setUp(self):
         pass
-
 
     def test_find_files(self):
         filelist = EV.find_files(self._data_folder)
@@ -105,52 +97,39 @@ class EvaluateTest(unittest.TestCase):
         self.assertIsInstance(filelist, list)
         self.assertEqual(len(filelist), 1)
 
-
     def test_save_figure(self):
-        surface_info = self._single_out[6]
+        surface_info = self._single_out.surfaces
         fig_path = Path(f"{self._models_folder}/test_fig.png")
-        EV.save_figure(
-            surface_info=surface_info,
-            save_path=fig_path,
-            binning=1
-        )
+        EV.save_figure(surface_info=surface_info, save_path=fig_path, binning=1)
 
         self.assertTrue(fig_path.is_file())
-
 
     def test_save_text_model(self):
-        surface_info = self._single_out[6]
+        surface_info = self._single_out.surfaces
         fig_path = Path(f"{self._models_folder}/test_fig.txt")
-        EV.save_text_model(
-            surface_info=surface_info,
-            save_path=fig_path,
-            binning=1
-        )
+        EV.save_text_model(surface_info=surface_info, save_path=fig_path, binning=1)
 
         self.assertTrue(fig_path.is_file())
 
-
     def test_eval_single(self):
-        self.assertEqual(len(self._single_out), 9)
+        self.assertIsInstance(self._single_out, objects.Result)
+        print(type(self._single_out.surfaces))
 
-        stats_1, stats_2, mean_1, mean_2, std_1, std_2, surface, binning, _ = self._single_out
-        self.assertIsInstance(stats_1, np.ndarray)
-        self.assertIsInstance(stats_2, np.ndarray)
-        self.assertIsInstance(mean_1, np.ndarray)
-        self.assertIsInstance(mean_2, np.ndarray)
-        self.assertIsInstance(std_1, np.ndarray)
-        self.assertIsInstance(std_2, np.ndarray)
-        self.assertIsInstance(binning, int)
-
+        self.assertIsInstance(self._single_out.yz_stats, np.ndarray)
+        self.assertIsInstance(self._single_out.xz_stats, np.ndarray)
+        self.assertIsInstance(self._single_out.yz_mean, np.ndarray)
+        self.assertIsInstance(self._single_out.xz_mean, np.ndarray)
+        self.assertIsInstance(self._single_out.yz_sem, np.ndarray)
+        self.assertIsInstance(self._single_out.xz_sem, np.ndarray)
+        self.assertIsInstance(self._single_out.surfaces, tuple)
+        self.assertIsInstance(self._single_out.binning_factor, int)
+        self.assertIsInstance(self._single_out.adaptive_triggered, bool)
 
     def test_eval_batch(self):
         os.chdir(self._anlys_folder)
         filelist = EV.find_files(self._data_folder)
 
-        out = EV.eval_batch(
-            filelist=filelist,
-            params=self.params
-        )
+        out = EV.eval_batch(filelist=filelist, params=self.params)
         self.assertEqual(len(out), 4)
 
         raw_df, analytics_df, show_df, _ = out
@@ -161,28 +140,23 @@ class EvaluateTest(unittest.TestCase):
         self.assertEqual(len(analytics_df), 1)
         self.assertEqual(len(show_df), 1)
 
-
     def test_get_lamella_orientations(self):
         ref_vertex, cell_vects = EV.get_lamella_orientations(self._my_lamella)
 
         self.assertEqual(ref_vertex.shape, (3,))
         self.assertEqual(cell_vects.shape, (3, 3))
 
-
     def test_get_intersection_mask(self):
         mask_out = EV.get_intersection_mask(
-            tomo_shape = [100, 100, 100],
-            lamella_obj = self._my_lamella
+            tomo_shape=[100, 100, 100], lamella_obj=self._my_lamella
         )
 
-        self.assertEqual(mask_out.shape, (100,)*3)
+        self.assertEqual(mask_out.shape, (100,) * 3)
         self.assertAlmostEqual(mask_out.mean(), 0.51, places=4)
-
 
     @classmethod
     def tearDownClass(self):
         self.tmpdir.cleanup()
-
 
     def tearDown(self):
         pass
