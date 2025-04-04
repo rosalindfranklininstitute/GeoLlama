@@ -43,7 +43,7 @@ def read_ipynb(
     Returns:
     dict
     """
-    nb = pkg_resources.resource_filename("GeoLlama.templates", ipynb_path)
+    nb = pkg_resources.resource_filename("geollama.templates", ipynb_path)
     with open(nb, "r") as f:
         return json.load(f)
 
