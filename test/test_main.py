@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 import starfile
 
-from GeoLlama import (main, config, evaluate)
+from geollama import main, config, evaluate
 
 
 class MainTest(unittest.TestCase):
@@ -43,10 +43,8 @@ class MainTest(unittest.TestCase):
         os.mkdir(f"{self.tmpdir.name}/data")
         os.mkdir(f"{self.tmpdir.name}/anlys")
 
-
     def setUp(self):
         pass
-
 
     def test_generate_config(self):
         os.chdir(f"{self.tmpdir.name}/anlys")
@@ -55,58 +53,66 @@ class MainTest(unittest.TestCase):
             main.generate_config()
             self.assertTrue(m.called)
 
-
     def test_main(self):
         os.chdir(f"{self.tmpdir.name}/anlys")
 
         # Create random dataframe as mock output from eval_batch
-        raw_df = pd.DataFrame(np.random.randint(0, 100, size=(10, 9)),
-                               columns=[
-                                   "filename",
-                                   "Mean_thickness_nm",
-                                   "Thickness_SEM_nm",
-                                   "Mean_X-tilt_degs",
-                                   "X-tilt_SEM_degs",
-                                   "Mean_Y-tilt_degs",
-                                   "Y-tilt_SEM_degs",
-                                   "Mean_drift_perc",
-                                   "Drift_SEM_perc"
-                               ]
+        raw_df = pd.DataFrame(
+            np.random.randint(0, 100, size=(10, 9)),
+            columns=[
+                "filename",
+                "Mean_thickness_nm",
+                "Thickness_SEM_nm",
+                "Mean_X-tilt_degs",
+                "X-tilt_SEM_degs",
+                "Mean_Y-tilt_degs",
+                "Y-tilt_SEM_degs",
+                "Mean_drift_perc",
+                "Drift_SEM_perc",
+            ],
         )
 
-        analytics_df = pd.DataFrame(np.random.choice(a=[True, False], size=(10, 9), p=[0.5, 0.5]),
-                                      columns=[
-                                          "filename",
-                                          "Anom_too_thin",
-                                          "Anom_too_thick",
-                                          "Anom_thick_uncertain",
-                                          "Anom_xtilt_out_of_range",
-                                          "Anom_xtilt_uncertain",
-                                          "Anom_centroid_displaced",
-                                          "Anom_wild_drift",
-                                          "Num_possible_anomalies",
-                                      ]
+        analytics_df = pd.DataFrame(
+            np.random.choice(a=[True, False], size=(10, 9), p=[0.5, 0.5]),
+            columns=[
+                "filename",
+                "Anom_too_thin",
+                "Anom_too_thick",
+                "Anom_thick_uncertain",
+                "Anom_xtilt_out_of_range",
+                "Anom_xtilt_uncertain",
+                "Anom_centroid_displaced",
+                "Anom_wild_drift",
+                "Num_possible_anomalies",
+            ],
         )
-        analytics_df['Num_possible_anomalies'] = np.random.randint(7, size=(10,))
+        analytics_df["Num_possible_anomalies"] = np.random.randint(7, size=(10,))
 
-        show_df = pd.DataFrame(np.random.randint(0, 100, size=(10, 6)),
-                                      columns=[
-                                          "filename",
-                                          "Thickness (nm)",
-                                          "X-tilt (degs)",
-                                          "Y-tilt (degs)",
-                                          "Centroid drift (%)",
-                                          "Num_possible_anomalies",
-                                      ]
+        show_df = pd.DataFrame(
+            np.random.randint(0, 100, size=(10, 6)),
+            columns=[
+                "filename",
+                "Thickness (nm)",
+                "X-tilt (degs)",
+                "Y-tilt (degs)",
+                "Centroid drift (%)",
+                "Num_possible_anomalies",
+            ],
         )
+        adaptive_count = 0
 
-
-        with mock.patch.object(evaluate, "eval_batch", return_value=(raw_df, analytics_df, show_df)) as m:
+        with mock.patch.object(
+            evaluate,
+            "eval_batch",
+            return_value=(raw_df, analytics_df, show_df, adaptive_count),
+        ) as m:
             main.main(
-                data_path = "../data",
-                pixel_size_nm = 1,
-                output_csv_path = "./test.csv",
-                output_star_path = "./test.star",
+                data_path="../data",
+                pixel_size_nm=1,
+                output_csv_path="./test.csv",
+                output_star_path="./test.star",
+                report=False,
+                printout=False,
             )
 
             # Test if files are created
@@ -121,11 +127,9 @@ class MainTest(unittest.TestCase):
             # pd.testing.assert_frame_equal(mock_df, csv_df)
             # pd.testing.assert_frame_equal(mock_df, star_df)
 
-
     @classmethod
     def tearDownClass(self):
         self.tmpdir.cleanup()
-
 
     def tearDown(self):
         pass

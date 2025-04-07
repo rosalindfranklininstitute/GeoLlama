@@ -28,7 +28,7 @@ import unittest
 import numpy as np
 import mrcfile
 
-from GeoLlama import (io, config)
+from geollama import io, config
 
 
 class IOSmokeTest(unittest.TestCase):
@@ -45,7 +45,9 @@ class IOSmokeTest(unittest.TestCase):
             pixel_size_nm=1.0,
             output_csv_path=None,
             output_star_path=None,
+            generate_report=None,
             output_mask=False,
+            printout=False,
             thickness_lower_limit=120,
             thickness_upper_limit=300,
             thickness_std_limit=15,
@@ -58,21 +60,19 @@ class IOSmokeTest(unittest.TestCase):
         self.tmpdir = tempfile.TemporaryDirectory()
 
         self.test_data = np.full(
-            shape = (100, 100, 100),
-            fill_value = 1.0,
-            dtype = np.float32
+            shape=(100, 100, 100), fill_value=1.0, dtype=np.float32
         )
 
         tmp_address = f"{self.tmpdir.name}/test.mrc"
         with mrcfile.new(tmp_address) as f:
             f.set_data(self.test_data)
 
-
     def test_read_mrc(self):
         os.chdir(self.tmpdir.name)
         # Test whether image remains unchanged if no binning
-        data_out, px_size, shape_in, binning, data_in = io.read_mrc(fname="./test.mrc",
-                                                           params=self.params,
+        data_out, px_size, shape_in, binning, data_in = io.read_mrc(
+            fname="./test.mrc",
+            params=self.params,
         )
         self.assertIsInstance(data_out, np.ndarray)
         self.assertEqual(shape_in, (100, 100, 100))
@@ -81,19 +81,17 @@ class IOSmokeTest(unittest.TestCase):
 
         # Test whether image has been correctly binned
         self.params.binning = 2
-        data_ds, px_size_ds, shape_in, binning, data_in = io.read_mrc(fname="./test.mrc",
-                                                             params=self.params
+        data_ds, px_size_ds, shape_in, binning, data_in = io.read_mrc(
+            fname="./test.mrc", params=self.params
         )
         self.assertEqual(data_ds.shape, (50, 50, 50))
         self.assertAlmostEqual(px_size_ds, 2.0, places=7)
         self.assertEqual(binning, 2)
         self.assertTrue(np.array_equal(data_in, self.test_data))
 
-
     @classmethod
     def tearDownClass(self):
         pass
-
 
     def tearDown(self):
         self.tmpdir.cleanup()
