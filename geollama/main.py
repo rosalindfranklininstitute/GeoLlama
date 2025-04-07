@@ -281,7 +281,9 @@ def main(
                 filelist=filelist, params=params
             )
 
-            Stats(profile).sort_stats(SortKey.CUMULATIVE).print_stats(50, r"\((?!\_).*\)$")
+            Stats(profile).sort_stats(SortKey.CUMULATIVE).print_stats(
+                50, r"\((?!\_).*\)$"
+            )
         profile.print()
     else:
         filelist = evaluate.find_files(path=params.data_path)
