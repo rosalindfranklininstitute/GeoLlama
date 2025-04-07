@@ -16,13 +16,12 @@
 ## Module             : GeoLlama.calc_by_slice  ##
 ## Created            : Neville Yee             ##
 ## Date created       : 02-Oct-2023             ##
-## Date last modified : 25-Apr-2024             ##
+## Date last modified : 07-Apr-2025             ##
 ##################################################
 
 import itertools
 from typing import Optional
 from functools import partial
-from pprint import pprint
 import multiprocessing as mp
 
 import numpy as np
@@ -33,15 +32,12 @@ from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
 from skimage.filters import difference_of_gaussians as DoG
 
-from sklearn.cluster import DBSCAN, OPTICS
+from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 
-from scipy.stats import mode, chi2, t, sem
+from scipy.stats import mode, t, sem
 import scipy.interpolate as spin
 from scipy.signal import convolve2d as c2d
-from icecream import ic
-
-import matplotlib.pyplot as plt
 
 
 def filter_bandpass(
@@ -209,7 +205,6 @@ def leave_one_out(
     # Determine whether worst point is an outlier using given threshold
     # If the point is an outlier, determine its index
     if mse_perc_change.min() < -thres:
-        points_out = np.delete(contour_pts, np.argmin(mse_perc_change), axis=0)
         return int(np.argmin(mse_perc_change))
 
     return None
@@ -283,9 +278,6 @@ def evaluate_slice(
     # Step 1: Greyvalue thresholding with Otsu method
     thres = otsu(view) * 1.12
     mask_s1 = np.argwhere(view >= thres)
-
-    # Skip slice if no pixels masked
-    centroid_s1 = mask_s1.mean(axis=0)
 
     # Step 2: Use Jackknife distance to remove potential outliers
     jackknife_dist = np.empty(len(mask_s1))

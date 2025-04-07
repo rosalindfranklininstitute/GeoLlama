@@ -24,21 +24,18 @@ from datetime import datetime as dt
 import logging
 import re
 
-os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 
 from pathlib import Path
 import typing
 from typing_extensions import Annotated
-import sys
 
 import typer
 
-from geollama import io
 from geollama import config
 from geollama import evaluate
-from geollama import calc_by_slice as CBS
 from geollama import report
 
 
@@ -275,7 +272,6 @@ def main(
 
     if profiling:
         # Only import profiling related libraries when needed
-        from cProfile import Profile
         from pstats import SortKey, Stats
         from pyinstrument import Profiler
 
@@ -285,7 +281,7 @@ def main(
                 filelist=filelist, params=params
             )
 
-            # Stats(profile).sort_stats(SortKey.CUMULATIVE).print_stats(50, r"\((?!\_).*\)$")
+            Stats(profile).sort_stats(SortKey.CUMULATIVE).print_stats(50, r"\((?!\_).*\)$")
         profile.print()
     else:
         filelist = evaluate.find_files(path=params.data_path)
@@ -381,7 +377,7 @@ done
 
         if xtilt_filtered_std_of_mean > 15:
             print(
-                f"\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED."
+                "\nWARNING: Post-filtering standard deviation of xtilt > 15 degrees. VISUAL INSPECTION OF DATASET RECOMMENDED."
             )
 
     logging.info("All GeoLlama tasks finished.")
