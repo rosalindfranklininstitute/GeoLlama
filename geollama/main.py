@@ -226,8 +226,13 @@ def main(
     from tabulate import tabulate
     import pandas as pd
 
+    dir_invoke = os.getcwd()
+    logging.info(f"Current directory: {dir_invoke}")
     if input_config is not None:
         params = config.read_config(input_config)
+        dir_work = Path(os.path.abspath(input_config)).parents[0]
+        logging.info(f"Changing working directory to: {dir_work}")
+        os.chdir(dir_work)
 
     else:
         if data_path is None:
@@ -391,6 +396,8 @@ done
             report_path="./GeoLlama_report.ipynb",
             html=True,
         )
+
+    os.chdir(dir_invoke)
 
 
 @app.command()
