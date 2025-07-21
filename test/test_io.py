@@ -28,14 +28,14 @@ import unittest
 import numpy as np
 import mrcfile
 
-from geollama import io, config
+from geollama import io, config, objects
 
 
 class IOSmokeTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.params = config.objectify_user_input(
+        self._params_dict = dict(
             autocontrast=True,
             adaptive=False,
             bandpass=False,
@@ -55,6 +55,7 @@ class IOSmokeTest(unittest.TestCase):
             displacement_limit=25,
             displacement_std_limit=5,
         )
+        self.params = objects.Config(**self._params_dict)
 
     def setUp(self):
         self.tmpdir = tempfile.TemporaryDirectory()
