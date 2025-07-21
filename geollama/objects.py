@@ -16,35 +16,85 @@
 ## Module             : GeoLlama.config  ##
 ## Created            : Neville Yee      ##
 ## Date created       : 03-May-2024      ##
-## Date last modified : 03-May-2024      ##
+## Date last modified : 21-Jul-2025      ##
 ###########################################
 
+from pathlib import Path
+import os
 from dataclasses import dataclass
 import typing
+import multiprocessing as mp
 
 import numpy.typing as npt
 
 
-@dataclass()
-class Config:
-    data_path: typing.Optional[str] = None
-    pixel_size_nm: typing.Optional[float] = None
-    binning: typing.Optional[int] = None
-    autocontrast: typing.Optional[bool] = None
-    adaptive: typing.Optional[bool] = None
-    bandpass: typing.Optional[bool] = None
-    num_cores: typing.Optional[int] = None
-    output_csv_path: typing.Optional[str] = None
-    output_star_path: typing.Optional[str] = None
-    generate_report: typing.Optional[bool] = None
-    output_mask: typing.Optional[bool] = None
-    printout: typing.Optional[bool] = None
-    thickness_lower_limit: typing.Optional[float] = None
-    thickness_upper_limit: typing.Optional[float] = None
-    thickness_std_limit: typing.Optional[float] = None
-    xtilt_std_limit: typing.Optional[float] = None
-    displacement_limit: typing.Optional[float] = None
-    displacement_std_limit: typing.Optional[float] = None
+class Config():
+    def __init__(self,
+        data_path: str,
+        pixel_size_nm: float,
+        binning: int,
+        autocontrast: bool,
+        adaptive: bool,
+        bandpass: bool,
+        num_cores: int,
+        output_csv_path: str,
+        output_star_path: str,
+        generate_report: bool,
+        output_mask: bool,
+        printout: bool,
+        thickness_lower_limit: float,
+        thickness_upper_limit: float,
+        thickness_std_limit: float,
+        xtilt_std_limit: float,
+        displacement_limit: float,
+        displacement_std_limit: float,
+    ):
+        self.data_path = data_path
+        self.pixel_size_nm = pixel_size_nm
+        self.binning = binning
+        self.autocontrast = autocontrast
+        self.adaptive = adaptive
+        self.bandpass = bandpass
+        self.num_cores = num_cores
+        self.output_csv_path = output_csv_path
+        self.output_star_path = output_star_path
+        self.generate_report = generate_report
+        self.output_mask = output_mask
+        self.printout = printout
+        self.thickness_lower_limit = thickness_lower_limit
+        self.thickness_upper_limit = thickness_upper_limit
+        self.thickness_std_limit = thickness_std_limit
+        self.xtilt_std_limit = xtilt_std_limit
+        self.displacement_limit = displacement_limit
+        self.displacement_std_limit = displacement_std_limit
+
+
+    def validate(self):
+        """
+        Check datatypes in parameters
+        """
+
+        if self.data_path is None:
+            raise ValueError("Data path (-p) must be given.")
+        elif not os.path.isdir(Path(self.data_path)):
+            raise NotADirectoryError("Given path must be a folder.")
+
+        if self.pixel_size_nm is None:
+            raise ValueError("Pixel size (-s) must be given.")
+        elif self.pixel_size_nm <= 0:
+            raise ValueError("Pixel size (-s) must be a positive number.")
+
+        if not isinstance(self.num_cores, int):
+            raise ValueError("num_cores (-np) must be an integer.")
+        elif not 1 <= self.num_cores <= mp.cpu_count():
+            raise ValueError(
+                f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}). Current settings: {self.num_cores}"
+            )
+
+        if self.generate_report and self.output_star_path is None:
+            raise ValueError(
+                "Output STAR file must be specified for automatic report generation."
+            )
 
 
 @dataclass()

@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.main  ##
 ## Created            : Neville Yee    ##
 ## Date created       : 03-Oct-2023    ##
-## Date last modified : 03-May-2024    ##
+## Date last modified : 21-Jul-2025    ##
 #########################################
 
 import os
@@ -37,9 +37,10 @@ import typer
 from geollama import config
 from geollama import evaluate
 from geollama import report
+from geollama import objects
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.2"
 
 
 def callback():
@@ -227,7 +228,7 @@ def main(
     import pandas as pd
 
     if input_config is not None:
-        params = config.read_config(input_config)
+        config_dict = config.read_config(input_config)
 
     else:
         if data_path is None:
@@ -238,7 +239,7 @@ def main(
             raise ValueError(
                 "Pixel size (-s) must be given if config file is not provided."
             )
-        params = config.objectify_user_input(
+        config_dict = dict(
             autocontrast=autocontrast,
             adaptive=adaptive,
             bandpass=bandpass,
@@ -259,7 +260,8 @@ def main(
             displacement_std_limit=displacement_std_limit,
         )
 
-    config.check_config(params)
+    params = objects.Config(**config_dict)
+    params.validate()
     logging.info("Configuration checks complete.")
     if params.binning == 0:
         logging.info("AUTOBIN: Automatic binning factor activated.")
