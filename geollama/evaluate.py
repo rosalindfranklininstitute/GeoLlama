@@ -53,9 +53,21 @@ mpl.use("Agg")
 @dataclass
 class Lamella:
     """
-    Object encapsulating estimated specifications of lamella
-    """
+    Object used for storing estimated specifications of lamella
 
+    Attributes
+    ----------
+    centroid : list of ndarrays
+        list of centroid coordinates from each curated slice
+    thickness : float
+        aggregated thickness of lamella
+    breadth : float
+        aggregated breadth of lamella
+    xtilt : float
+        aggregated x-tilt angle of lamella
+    ytilt : float
+        aggregated y-tilt angle of lamella
+    """
     centroid: list
     thickness: float
     breadth: float
@@ -65,15 +77,18 @@ class Lamella:
 
 def find_files(path: str) -> list:
     """
-    Function to find appropriate files from given path
+    Find appropriate tomograms (in mrc format) from a given folder and return a list of paths.
 
-    Args:
-    path (str) : Path to folder holding tomograms
+    Parameters
+    ----------
+    path : str
+        Path to folder holding tomograms
 
-    Returns:
-    list
+    Returns
+    -------
+    filelist : list
+        list of paths to tomograms
     """
-
     criterion = Path(path).glob("**/*.mrc")
     filelist = sorted([x for x in criterion if x.is_file()])
 
@@ -82,14 +97,17 @@ def find_files(path: str) -> list:
 
 def save_figure(surface_info, save_path, binning):
     """
-    Export data and interpolated surfaces as PNG file
+    Plot interpolated surfaces using matplotlib and export them as a png file.
 
-    Args:
-    surface_info (tuple) : Outputs (tuple) of GeoLlama evaluation module
-    save_path (str) : Path to PNG file being exported
-    binning (int) : Internal binning factor of tomogram
+    Parameters
+    ----------
+    surface_info : tuple of ndarrays
+        Tuple storing all surface information needed for plotting
+    save_path : str
+        Path to png file being exported
+    binning : int
+        Internal binning factor of tomogram
     """
-
     xx_top, yy_top, surface_top, xx_bottom, yy_bottom, surface_bottom, _, _ = (
         surface_info
     )
@@ -119,10 +137,19 @@ def save_text_model(surface_info, save_path, binning):
     """
     Export data and interpolated model as text file for conversion and visualisation in IMOD.
 
-    Args:
-    surface_info (tuple) : Outputs (tuple) of GeoLlama evaluation module
-    save_path (str) : Path to text file being exported
-    binning (int) : Internal binning factor of tomogram
+    Parameters
+    ----------
+    surface_info : tuple of ndarrays
+        Tuple storing all surface information needed for plotting
+    save_path : str
+        Path to text file being exported
+    binning : int
+        Internal binning factor of tomogram
+
+    Returns
+    -------
+    full_contours : ndarray
+        Array storing all contour node coordinates
     """
     (
         xx_top,
@@ -155,14 +182,18 @@ def eval_single(fname: str, params: objects.Config) -> objects.Result:
     """
     Evaluate geometry of a single tomogram given source file
 
-    Args:
-    fname (str) : Path to tomogram file
-    params (Config) : Config object holding all parameters
+    Parameters
+    ----------
+    fname : str
+        Path to tomogram file
+    params : Config
+        Config object holding all parameters
 
-    Returns:
-    objects.Result
+    Returns
+    -------
+    single_result : Result
+        Result object holding all quantities evaluated from one tomogram
     """
-
     tomo, binned_pixel_size, unbinned_shape, binning_factor, tomo_orig = io.read_mrc(
         fname=fname, params=params
     )
@@ -265,18 +296,29 @@ def _eval_generator(filelist_in: list, params: objects.Config):
             yield eval_result
 
 
-def eval_batch(filelist: list, params: objects.Config) -> (pd.DataFrame, pd.DataFrame):
+def eval_batch(filelist: list, params: objects.Config
+               ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, int):
     """
     Evaluate geometry of tomograms given path to folder containing tomograms, then output statistics as pandas DataFrames.
 
-    Args:
-    filelist (list) : List containing paths to tomograms
-    params (Config) : Config object holding all parameters
+    Parameters
+    ----------
+    filelist : list
+        List containing paths to tomograms
+    params : Config
+        Config object storing all parameters
 
-    Returns:
-    DataFrame, DataFrame
+    Returns
+    -------
+    raw_data : DataFrame
+        DataFrame storing raw evaluation results
+    analytics_data : DataFrame
+        DataFrame storing analytics results (whether a tomogram is potentially anomalous, and in what ways)
+    show_data : DataFrame
+        Simplified DataFrame for onscreen output
+    adaptive_trigger_count : int
+        Number of tomograms that have triggered adaptive mode (increased slice sampling)
     """
-
     _results_list = list(_eval_generator(filelist, params))
 
     drift_mean_list = [obj.yz_mean[0] for obj in _results_list]
@@ -389,18 +431,26 @@ def eval_batch(filelist: list, params: objects.Config) -> (pd.DataFrame, pd.Data
         }
     )
 
-    return (raw_data, analytics_data, show_data, np.sum(adaptive_list))
+    adaptive_trigger_count = np.sum(adaptive_list)
+    return (raw_data, analytics_data, show_data, adaptive_trigger_count)
 
 
 def get_lamella_orientations(lamella_obj: Lamella) -> (np.ndarray, np.ndarray):
     """
-    Extracts the coordinates of the reference vertex of the lamella, and calculates the cell vector of the estimated lamella.
+    Extract the coordinates of the reference vertex of the lamella,
+    then calculates the cell vector of the estimated lamella.
 
-    Args:
-    lamella_obj (Lamella) : input Lamella object including essential lamella information
+    Parameters
+    ----------
+    lamella_obj : Lamella
+        Input Lamella object including essential lamella information
 
-    Returns:
-    ndarray, ndarray
+    Returns
+    -------
+    lamella_ref_vertex : ndarray
+        Coordinates of the 8 reference vertices of lamella (modelled as a cuboid)
+    lamella_cell_vectors : ndarray
+        Cell vectors of the modelled lamella
     """
     rotation_matrix = R.from_euler(
         "yx", [lamella_obj.xtilt, -lamella_obj.ytilt], degrees=True
@@ -430,12 +480,17 @@ def get_intersection_mask(
     """
     Calculate volumetric mask for region estimated to be within lamella.
 
-    args:
-    tomo_shape (list) : dimensions of the input tomogram
-    lamella_obj (Lamella) : input Lamella object including essential lamella information
+    Parameters
+    ----------
+    tomo_shape : list
+        Dimensions of the input tomogram
+    lamella_obj : Lamella
+        Input Lamella object including essential lamella information
 
-    Returns:
-    ndarray
+    Returns
+    -------
+    mask : ndarray
+        Boolean mask of region within estimated lamella
     """
     # Calculate full list of tomogram pixel coordinates
     X, Y, Z = np.meshgrid(
@@ -466,14 +521,22 @@ def get_statistical_surfaces(
     num_points: int = 100,
 ) -> (np.ndarray, np.ndarray):
     """
-    Calculate the top and bottom surfaces of lamella using evaluated geometry. Analogous to CBS:interpolate_surfaces.
+    Calculate the top and bottom surfaces of lamella using evaluated geometry.
+    Analogous to CBS:interpolate_surfaces.
 
-    Args:
-    lamella_obj (Lamella) : input Lamella object including essential lamella information
-    num_points (int) : number of points per dimension for interpolation
+    Parameters
+    ----------
+    lamella_obj : Lamella
+        Input Lamella object including essential lamella information
+    num_points : int
+        Number of points per dimension for interpolation
 
-    Returns:
-    ndarray, ndarray
+    Returns
+    -------
+    top_surface : ndarray
+        Grid coordinates of theoretical (smooth) top surface
+    bottom_surface : ndarray
+        Grid coordinates of theoretical (smooth) bottom surface
     """
     _, cell_vecs = get_lamella_orientations(lamella_obj=lamella_obj)
     (b1, b2, t) = cell_vecs
