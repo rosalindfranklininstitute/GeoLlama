@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.calc_by_slice  ##
 ## Created            : Neville Yee             ##
 ## Date created       : 02-Oct-2023             ##
-## Date last modified : 07-Apr-2025             ##
+## Date last modified : 22-Jul-2025             ##
 ##################################################
 
 import itertools
@@ -30,7 +30,6 @@ from numpy.lib.stride_tricks import sliding_window_view as swv
 
 from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
-from skimage.filters import difference_of_gaussians as DoG
 
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
@@ -44,14 +43,21 @@ def filter_bandpass(
     image: npt.NDArray[any],
 ) -> npt.NDArray[any]:
     """
-    Bandpass filter for image
+    Perform bandpass filtering on image using scikit-image's difference of Gaussian function.
 
-    Args:
-    image (ndarray) : input image
+    Parameters
+    ----------
+    image : ndarray
+        Image to be bandpass-filtered.
 
-    Returns:
-    ndarray
+    Returns
+    -------
+    filtered_image : ndarray
+        Bandpass-filtered image
+
     """
+    from skimage.filters import difference_of_gaussians as DoG
+
     filtered_image = DoG(image, min(image.shape) * 0.01, max(image.shape) * 0.05)
 
     return filtered_image
@@ -64,16 +70,27 @@ def autocontrast_slice(
     clip_cutoff: float = 3,
 ) -> npt.NDArray[any]:
     """
-    Auto-contrast image slice by clipping and histogram stretching
+    Auto-contrast image slice by clipping and histogram stretching.
 
-    Args:
-    image (ndarray) : input image
-    target_mean (float) : mean grayvalue of the output image
-    target_std (float) : standard deviation of grayvalue of the output image
-    clip_cutoff (float) : number of SDs to clip before histogram stretching
+    The image grey-values are converted to Z-scores first, and then clipped according to given parameters.
+    The clipped image histogram is then re-equalised to a target mean and standard deviation.
 
-    Returns:
-    ndarray
+    Parameters
+    ----------
+    image : ndarray
+        Input image for auto-contrast.
+    target_mean : float, default=150,
+        Target mean grey-value of contrast-corrected image.
+    target_std : float, default=40
+        Target mean grey-value of contrast-corrected image.
+    clip_cutoff : float, default=3
+        Cutoff threshold for clipping of image grey-value Z-scores.
+
+    Returns
+    -------
+    img_corrected : ndarray
+        Output image after auto-contrast.
+
     """
     modified_z_score = (image - np.mean(image)) / (np.std(image) * clip_cutoff)
     z_clipped = np.clip(modified_z_score, -1, 1)
@@ -90,17 +107,30 @@ def create_slice_views(
     gaussian_sigma: int = None,
 ) -> (npt.NDArray[any], npt.NDArray[any]):
     """
-    Create slice views from full tomogram for downstream processes
+    Create slice views from full tomogram for downstream processes.
 
-    Args:
-    volume (ndarray) : input 3D image (tomogram)
-    sliding_window_width (int) : width of sliding window for metric calculation for 2D slices
-    gaussian_sigma (int) : Sigma parameter for Gaussian blurring kernal
+    Sliding windows are first created out of the tomogram along the two "horizontal" axes, along which
+    the standard deviation are created.
+    The curated (reduced) volumes are than transposed such that the assessment axes are in the first positions. For
+    example, the ZXY->XYZ transposition for the ZY-view.
+    Gaussian filter will be applied to the curated volumes if the `gaussian_sigma` parameter is specified.
 
-    Returns:
-    ndarray, ndarray
+    Parameters
+    ----------
+    volume : ndarray
+        Input 3D image (tomogram).
+    sliding_window_width : int, default=15
+        Width of sliding window for metric calculation of 2D slices
+    gaussian_sigma : int, default=None
+        Sigma parameter for Gaussian blurring kernel. Gaussian blurring applied only if parameter is not None.
+
+    Returns
+    -------
+    view_zy : ndarray
+        Stack of 2D images (ZY-planes) for evaluation along the X-axis
+    view_zx : ndarray
+        Stack of 2D images (ZX-planes) for evaluation along the Y-axis
     """
-
     # Create sliding window views
     sliding_zy = swv(volume, sliding_window_width, axis=1)
     sliding_zx = swv(volume, sliding_window_width, axis=2)
@@ -125,14 +155,22 @@ def interpolate_surface(
     n_points: int = 100,
 ) -> (npt.NDArray, npt.NDArray, npt.NDArray):
     """
-    Interpolates surface using mesh points
+    Interpolates surface with given mesh points using scipy.interpolate.
 
-    Args:
-    mesh_points (ndarray) : input mesh points for reconstructing surface
-    n_points (int) : number of points per dimension for interpolation
+    Parameters
+    ----------
+    mesh_points : ndarray
+        Input mesh points for reconstructing surface
+    n_points : int, default=100
+        Number of points per dimension for interpolation
 
-    Returns:
-    ndarray
+    Returns
+    -------
+    xx, yy : tuple of ndarrays
+        Mesh points along X and Y axes as outputs from numpy.meshgrid.
+        For detailed explanation, see numpy documentation.
+    surface : ndarray
+        Interpolated surface height (in Z direction)
     """
     x_mesh = np.linspace(np.min(mesh_points[:, 1]), np.max(mesh_points[:, 1]), n_points)
     y_mesh = np.linspace(np.min(mesh_points[:, 2]), np.max(mesh_points[:, 2]), n_points)
@@ -148,13 +186,25 @@ def generalised_theil_sen_fit(
     contour_pts: npt.NDArray[any],
 ) -> (npt.NDArray, npt.NDArray, float):
     """
-    Linear fitting of 3D points using a generalised Theil-Sen algorithm
+    Linear fitting of 3D points using a generalised Theil-Sen algorithm.
 
-    Args:
-    contour_pts (ndarray) : contour points in 3D space for fitting
+    Parameters
+    ----------
+    contour_pts : ndarray
+        Contour points in 3D space for fitting.
 
-    Returns:
-    ndarray, ndarray, float
+    Returns
+    -------
+    grad_norm : ndarray
+        Normalised gradient of fitted line
+    ptl_median : ndarray
+        Offset of fitted line
+    mse : float
+        Mean-squared error of fit
+
+    References
+    ----------
+    .. [1] Theil-Sen algorithm, https://en.wikipedia.org/wiki/Theil%E2%80%93Sen_estimator
     """
     # Estimate gradient of fitted line
     point_pairs = np.array(list(itertools.combinations(contour_pts, 2)))
@@ -182,14 +232,21 @@ def leave_one_out(
     thres: float = 0.1,
 ) -> Optional[int]:
     """
-    Get  worst outlier point using leave-one-out (LOO) algorithm
+    Determine the worst outlier point from an ensemble using the leave-one-out (LOO) algorithm.
+    If by removing the worst candidate outlier point the mean-squared error would change by less than the given threshold,
+    then there is no real outlier.
 
-    Args:
-    contour_pts (ndarray) : Input ensemble for outlier detection
-    thres (float) : Threshold MSE change for outlier detection
+    Parameters
+    ----------
+    contour_pts : ndarray
+        Input ensemble for outlier detection
+    thres : float, default=0.1
+        Threshold mean-squared error change for outlier detection
 
-    Returns:
-    int | None
+    Returns
+    -------
+    int or None
+        Returns the index of the worst outlier point in the given ensemble if applicable, otherwise returns None
     """
     mse_perc_change = np.empty(len(contour_pts))
 
@@ -216,18 +273,25 @@ def refine_contour_LOO(
     thres: float = 0.1,
 ) -> list:
     """
-    Iteratively remove outliers using LOO algorithm
+    Iteratively remove outliers using the leave-one-out algorithm.
+    This function is a wrapper function of `leave_one_out`.
 
-    Args:
-    contour_pts (ndarray) : Input ensemble of contour points for refinement
-    max_delete_percentage (float) : Maximum percentage of slices allowed to be removed
-    thres (float) : Threshold MSE change for outlier detection
+    Parameters
+    ----------
+    contour_pts : ndarray
+        Input ensemble of contour points for refinement
+    max_delete_perc : float, default=15.0
+        Maximum percentage of slices allowed to be removed
+    thres : float, default=0.1
+        Threshold mean-squared error change for outlier detection
 
-    Returns:
-    np.ndarray
+    Returns
+    -------
+    remove_list : list
+        List of indices of slices in the given ensemble for removal
     """
     max_iter = int(len(contour_pts) * max_delete_perc * 0.01)
-    slice_list = [i for i in range(len(contour_pts))]
+    slice_list = list(range(len(contour_pts)))
     remove_list = []
 
     temp = np.copy(contour_pts)
@@ -245,9 +309,9 @@ def refine_contour_LOO(
 def evaluate_slice(
     view_input: npt.NDArray[any],
     pixel_size_nm: float,
-    pt_thres: int = 100,
     autocontrast: bool = True,
 ) -> (
+    float,
     float,
     float,
     float,
@@ -258,18 +322,38 @@ def evaluate_slice(
     npt.NDArray,
 ):
     """
-    Function for creation and evaluation of one 2D slice from tomogram given coordinates of intersection point
+    Evaluates lamella geometry at given position.
+    
+    Parameters
+    ----------
+    view_input : ndarray
+        Slice of tomogram for evaluation
+    pixel_size_nm : float
+        Pixel spacing of tomogram (after internal binning)
+    autocontrast : bool, default=True
+        Apply auto-contrast on slice before evaluation
 
-    Args:
-    volume (ndarray) : tomogram for evaluation
-    pixel_size_nm (float) : pixel size of tomogram (internally binned)
-    pt_thres (int) : acceptance limit (number of feature pixels) of slices
-    autocontrast (bool) : whether to apply autocontrast on slices before evaluation
-
-    Returns:
-    float, float, float, int, ndarray, ndarray, ndarray, ndarray
+    Returns
+    -------
+    lamella_to_slice_dist : float
+        Maximum displacement of centroid of lamella from centre of given image (in %)
+    slice_breadth : float
+        Breadth of lamella in image (in unit of nm)
+    slice_thickness : float
+        Thickness of lamella in image (in unit of nm)
+    angle : float
+        Tilt angle of lamella with respect to image
+    num_points : int
+        Number of pixels in given image determined as feature from lamella
+    top_pt1 : ndarray
+        Coordinates of one of the "top" lamella corners in image, calculated from lamella cell vectors
+    top_pt2 : ndarray
+        Coordinates of the other "top" lamella corner in image, calculated from lamella cell vectors
+    bottom_pt1 : ndarray
+        Coordinates of one of the "bottom" lamella corners in image, calculated from lamella cell vectors
+    bottom_pt2 : ndarray
+        Coordinates of the other "bottom" lamella corner in image, calculated from lamella cell vectors
     """
-
     view = view_input.T
 
     if autocontrast:
@@ -361,23 +445,43 @@ def evaluate_full_lamella(
     cpu: int = 1,
     discard_pct: float = 20,
     step_pct: float = 2.5,
-) -> (npt.NDArray, npt.NDArray, float, float, float, float, tuple):
+) -> (npt.NDArray, npt.NDArray, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, tuple):
     """
-    Evaluation of full lamella geometry
+    Evaluate geometry of lamella from given tomogram.
 
-    Args:
-    volume (ndarray) : Tomogram to be evaluated
-    pixel_size_nm (float) : Pixel size (after binning) of tomogram
-    autocontrast (bool) : whether to apply autocontrast on slices before evaluation
-    cpu (int) : number of cores used in parallel calculation of slices
-    discard_pct (float) : % of pixels from either end along an axis to discard.
-    step_pct (float) : % of total pixels along an axis per step
+    Parameters
+    ----------
+    volume : ndarray
+        Tomogram to be evaluated
+    pixel_size_nm : float
+        Pixel spacing of tomogram (after internal binning)
+    autocontrast : bool
+        Apply auto-contrast on slice before evaluation
+    cpu : int, default=1
+        Number of cores used in parallel calculation of slices
+    discard_pct : float, default=20
+        % of pixels from either end along an axis to discard
+    step_pct : float, default=2.5
+        % of total pixels along an axis per step (e.g. for an axis of length 100 pixels and the `step_pct=5.0`, the
+        absolute step size will be 5 pixels per step)
 
-    Returns:
-    ndarray, ndarray, float, float, float, float, tuple
-
+    Returns
+    -------
+    yz_full_stats : ndarray
+        ndarray storing raw (full) evaluation statistics of tomogram along the X-axis
+    xz_full_stats : ndarray
+        ndarray storing raw (full) evaluation statistics of tomogram along the Y-axis
+    yz_mean : array_like
+        array storing all the mean values calculated using `yz_full_stats`
+    xz_mean : array_like
+        array storing all the mean values calculated using `xz_full_stats`
+    yz_sem : array_like
+        array storing the standard error of mean of measurements, aggregated from `yz_full_stats`
+    xz_sem : array_like
+        array storing the standard error of mean of measurements, aggregated from `xz_full_stats`
+    surfaces : tuple of ndarrays
+        tuple storing all information of interpolated lamella surfaces, used for plotting
     """
-
     # Create slice views
     zy_stack, zx_stack = create_slice_views(
         volume=volume, sliding_window_width=5, gaussian_sigma=3
