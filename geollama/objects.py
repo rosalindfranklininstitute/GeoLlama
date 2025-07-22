@@ -29,6 +29,54 @@ import numpy.typing as npt
 
 
 class Config():
+    """
+    Object containing parameters for GeoLlama, and a self-validation function.
+
+    Parameters
+    ----------
+    data_path : str
+        Path to folder containing tomograms for evaluation
+    pixel_size_nm : float
+        Pixel spacing of input tomograms (in nm)
+    binning : int
+        Internal (additional) binning factor for GeoLlama
+    autocontrast : bool
+        Apply auto-contrast on tomogram slices as preprocessing step before evaluation
+    adaptive : bool
+        Use adaptive sampling in evaluation
+    bandpass : bool
+        Apply bandpass filter on tomogram slices as preprocessing step before evaluation
+    num_cores : int
+        Number of CPUs used for GeoLlama evaluation in parallel
+    output_csv_path : str
+        Path to output CSV file containing analytical results
+    output_star_path : str
+        Path to output STAR file containing analytical results
+    generate_report : bool
+        Generate detailed report after evaluation
+    output_mask : bool
+        Generate volumetric mask after evaluation
+    printout : bool
+        Print statistical output after evaluation
+    thickness_lower_limit : float
+        Lower limit of lamella thickness in nm. (for feature extraction)
+    thickness_upper_limit : float
+        Upper limit of lamella thickness in nm. (for feature extraction)
+    thickness_std_limit : float
+        Limit of lamella thickness standard deviation in nm. (for feature extraction)
+    xtilt_std_limit : float
+        Limit of lamella xtilt standard deviation in degrees. (for feature extraction)
+    displacement_limit : float
+        Limit of lamella centroid displacement in %. (for feature extraction)
+    displacement_std_limit : float
+        Limit of lamella centroid displacement standard deviation in %. (for feature extraction)
+
+    Notes
+    -----
+    The `pixel_size_nm` parameter assumes that all tomograms in the given folder (`data_path`) have the same pixel spacing.
+    Moreover, it also assumes that the pixel spacing is consistent among the three axes of a tomogram.
+    """
+
     def __init__(self,
         data_path: str,
         pixel_size_nm: float,
@@ -71,9 +119,18 @@ class Config():
 
     def validate(self):
         """
-        Check datatypes in parameters
-        """
+        Self-validate parameters.
 
+        Raises
+        ------
+        ValueError
+            - If `data_path` is not provided
+            - If `pixel_size_nm` is not provided or `pixel_size_nm <= 0`
+            - If `num_core` is not an integer or `num_core` outside the range of physically accessible number of CPUs
+            - If `output_star_path` is not provided when `generate_report == True`
+        NotADirectoryError
+            - If `data_path` does not point to a folder
+        """
         if self.data_path is None:
             raise ValueError("Data path (-p) must be given.")
         elif not os.path.isdir(Path(self.data_path)):
