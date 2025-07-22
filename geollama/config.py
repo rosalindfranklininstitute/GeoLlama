@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.config  ##
 ## Created            : Neville Yee      ##
 ## Date created       : 03-May-2024      ##
-## Date last modified : 21-Jul-2025      ##
+## Date last modified : 22-Jul-2025      ##
 ###########################################
 
 import os
@@ -28,10 +28,12 @@ import multiprocessing as mp
 
 def generate_config(output_path):
     """
-    Generates default configuration file
+    Generate default configuration YAML file.
 
-    Args:
-    output_path (str) : Path to output yaml file
+    Parameters
+    ----------
+    output_path : str
+        Path to output YAML file
     """
     import ruamel.yaml
 
@@ -93,13 +95,17 @@ displacement_std_limit : 5
 
 def read_config(config_fname: str) -> dict:
     """
-    Parse GeoLlama config YAML file
+    Parse GeoLlama config YAML file and return a dictionary of parameters.
 
-    Args:
-    config_fname (str) : Path to config file
+    Parameters
+    ----------
+    config_fname : str
+        Path to YAML configuration file
 
-    Returns:
-    Config
+    Returns
+    -------
+    config_dict : dict
+        Dictionary containing all parameters for GeoLlama
     """
     import ruamel.yaml
 
