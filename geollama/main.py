@@ -57,10 +57,20 @@ def callback(
         typer.Option(
             "-d",
             "--dev_mode",
-            help="Developer mode. If true, verbose error messages and tracebacks (with full printout of local variables) will be enabled.",
+            help=r"""Run GeoLlama in developer mode. If true, verbose error messages and tracebacks 
+            (with full printout of local variables) will be enabled.""",
         ),
     ] = False,
 ):
+    """
+    Callback for triggering dev-mode in GeoLlama.
+
+    Parameters
+    ----------
+    dev_mode : bool
+        Run GeoLlama in developer mode. If true, verbose error messages and tracebacks
+        (with full printout of local variables) will be enabled.
+    """
     app.pretty_exceptions_show_locals = dev_mode
 
 
@@ -70,6 +80,19 @@ def generate_config(
         typing.Optional[str], typer.Option(help="Path to output YAML config file.")
     ] = "./config.yaml",
 ):
+    """
+    Generate a default configuration YAML file.
+    Only used as a CLI entrypoint: cf. config.generate_config() for business logics.
+
+    Parameters
+    ----------
+    output_path : str, default="./config.yaml"
+        Path to output YAML config file.
+
+    Returns
+    -------
+
+    """
     config.generate_config(output_path)
 
 
@@ -114,7 +137,10 @@ def main(
         typer.Option(
             "-b",
             "--bin",
-            help="Additional binning factor for GeoLlama tomogram evaluation. Overall tomogram binning factor for evaluation is the product of the reconstruction and GeoLlama (this parameter) binning factors. Recommended overall binning factor is 16 or 32 -- e.g. if input tomogram is binned by 4 at reconstruction, recommended parameter would be 4 or 8. Use 0 (default) for auto-binning.",
+            help="""Additional binning factor for GeoLlama tomogram evaluation. 
+            Overall tomogram binning factor for evaluation is the product of the reconstruction and GeoLlama (this parameter) binning factors. 
+            Recommended overall binning factor is 16 or 32 -- e.g. if input tomogram is binned by 4 at reconstruction, 
+            recommended parameter would be 4 or 8. Use 0 (default) for auto-binning.""",
         ),
     ] = 0,
     num_cores: Annotated[
@@ -181,7 +207,7 @@ def main(
     ] = True,
     profiling: Annotated[
         bool,
-        typer.Option(help="Turn on profiling mode."),
+        typer.Option(help="Run GeoLlama on profiling mode."),
     ] = False,
     report: Annotated[
         bool,
@@ -192,30 +218,55 @@ def main(
     ] = True,
 ):
     """
-    Main API for running GeoLlama
+    Main API for running GeoLlama.
 
-    Args:
-    input_config (str) : Path to input config file
-    adaptive (bool) : Use adaptive sampling for slice evaluation
-    autocontrast (bool) : Apply autocontrast to slices prior to evaluation
-    adaptive (bool) : Whether to use adaptive mode (doubling sampling in second run if anomaly detected)
-    bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
-    data_path (str) : Path to folder holding all tomograms in batch mode
-    pixel_size_nm (float) : Tomogram pixel size in nm
-    binning (int) : Binning factor for tomogram evaluation (0 = auto)
-    num_cores (int) : Number of CPUs used
-    output_csv_path (str) : Output path for CSV file
-    output_star_path (str) : Output path for STAR file
-    thickness_lower_limit (float) : Lower limit of lamella thickness in nm (for feature extraction)
-    thickness_upper_limit (float) : Upper limit of lamella thickness in nm (for feature extraction)
-    thickness_std_limit (float) : Limit of lamella thickness standard deviation in nm (for feature extraction)
-    xtilt_std_limit (float) : Limit of lamella xtilt standard deviation in degrees (for feature extraction)
-    displacement_limit (float) : Limit of lamella centroid displacement in % (for feature extraction)
-    displacement_std_limit (float) : Limit of lamella centroid displacement standard deviation in % (for feature extraction)
-
-    output_mask (bool) : Whether to output volumetric masks
-    printout (bool) : Print statistical output after evaluation
-    report (bool) : Automatically generate report at the end of calculations
+    Parameters
+    __________
+    input_config : str, default=None
+        Input configuration file. (NB. Overrides any parameters provided on command-line)
+    adaptive : bool, default=True
+        Use adaptive sampling for slice evaluation.
+    autocontrast : bool, default=True
+        Apply autocontrast to slices prior to evaluation.
+    adaptive : bool, default=True
+        Whether to use adaptive mode. (doubling sampling in second run if anomaly detected)
+    bandpass : bool, default=False
+        Apply bandpass filter to tomograms prior to evaluation.
+    data_path : str, default=None
+        Path to folder holding all tomograms in batch mode.
+    pixel_size_nm : float, default=None
+        Tomogram pixel size in nm.
+    binning : int, default=0
+        Additional binning factor for GeoLlama tomogram evaluation.
+        Overall tomogram binning factor for evaluation is the product of the reconstruction and GeoLlama (this parameter) binning factors.
+        Recommended overall binning factor is 16 or 32 -- e.g. if input tomogram is binned by 4 at reconstruction, recommended parameter would be 4 or 8.
+        Use 0 for auto-binning.
+    num_cores : int, default=1
+        Number of CPUs used.
+    output_csv_path : str, default=None
+        Output path for CSV file.
+    output_star_path : str, default=None
+        Output path for STAR file.
+    output_mask : bool, default=False
+        Output volumetric binary masks. If true, masks will be saved in ./volume_masks/ with same filenames as input tomogram.
+    thickness_lower_limit : float, default=120
+        Lower limit of lamella thickness in nm. (for feature extraction)
+    thickness_upper_limit : float, default=120
+        Upper limit of lamella thickness in nm. (for feature extraction)
+    thickness_std_limit : float, default=15
+        Limit of lamella thickness standard deviation in nm. (for feature extraction)
+    xtilt_std_limit : float, default=5
+        Limit of lamella xtilt standard deviation in degrees. (for feature extraction)
+    displacement_limit : float, default=25
+        Limit of lamella centroid displacement in %. (for feature extraction)
+    displacement_std_limit : float, default=5
+        Limit of lamella centroid displacement standard deviation in %. (for feature extraction)
+    printout : bool, default=True
+        Print statistical output after evaluation.
+    profiling : bool, default=False
+        Run GeoLlama on profiling mode.
+    report : bool, default=True
+        Automatically generate report at the end of calculations.
     """
 
     logging.info("GeoLlama started.")
@@ -410,6 +461,19 @@ def generate_report(
         typer.Option(help="Export report to HTML."),
     ] = True,
 ):
+    """
+    API for generating a detailed report using GeoLlama outputs.
+    Only used as a CLI entrypoint: cf. report.generate_report() for business logics.
+
+    Parameters
+    ----------
+    star_path : str
+        Path to GeoLlama STAR file for report generation.
+    report_path : str
+        Target path to save report.
+    html : bool
+        Export report to HTML.
+    """
     try:
         not Path(report_path).exists()
     except:
