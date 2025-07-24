@@ -22,7 +22,8 @@
 
 import sys
 import os
-import tempfile
+from pathlib import Path
+import shutil
 import unittest
 import multiprocessing as mp
 
@@ -39,7 +40,8 @@ class ConfigTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Set up temp folder structure
-        self.tmpdir = tempfile.TemporaryDirectory()
+        self.tmpdir = Path(os.getcwd() + "/temp/")
+        os.mkdir(f"{self.tmpdir}")
         os.mkdir(f"{self.tmpdir.name}/data")
         os.mkdir(f"{self.tmpdir.name}/anlys")
 
@@ -151,7 +153,7 @@ class ConfigTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        self.tmpdir.cleanup()
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
         pass
