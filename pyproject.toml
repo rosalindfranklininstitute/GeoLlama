@@ -39,6 +39,7 @@ dependencies = [
 	"seaborn",
 	"nbconvert",
 	"opencv-python",
+	"pip==25.1.1",
 ]
 
 [tool.poetry]
