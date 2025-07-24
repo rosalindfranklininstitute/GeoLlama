@@ -173,6 +173,8 @@ def save_text_model(surface_info, save_path, binning):
     full_contours = np.vstack((full_list_top, full_list_bottom), dtype=object)
     full_contours[:, 2] += 0.5
 
+    if not Path(save_path).parent.is_dir():
+        Path(save_path).parent.mkdir(exist_ok=True)
     np.savetxt(save_path, full_contours, fmt="%4d %.2f %.2f %.2f")
 
     return full_contours[:, 1:]

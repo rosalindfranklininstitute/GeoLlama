@@ -20,10 +20,9 @@
 #################################################
 
 
-import sys
+import shutil
 import os
 from pathlib import Path
-import tempfile
 import unittest
 
 import numpy as np
@@ -31,7 +30,6 @@ import pandas as pd
 import mrcfile
 
 from geollama import evaluate as EV
-from geollama import config
 from geollama import objects
 
 
@@ -40,24 +38,25 @@ class EvaluateTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Set up temp folder structure
-        self.tmpdir = tempfile.TemporaryDirectory()
-        os.mkdir(f"{self.tmpdir.name}/data")
-        os.mkdir(f"{self.tmpdir.name}/anlys")
-        os.mkdir(f"{self.tmpdir.name}/anlys/surface_models")
+        self.orig_path = Path(os.getcwd())
+        self.tmpdir = Path(os.getcwd(), "/temp/")
+        self.tmp_data = Path(self.tmpdir, "data")
+        self.tmp_anlys = Path(self.tmpdir, "anlys")
 
-        self._data_folder = Path(f"{self.tmpdir.name}/data")
-        self._anlys_folder = Path(f"{self.tmpdir.name}/anlys")
-        self._models_folder = Path(f"{self.tmpdir.name}/anlys/surface_models")
+        # Create folders
+        self.tmpdir.mkdir(exist_ok=True)
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
 
         self._test_data = np.random.random(
             size=(100, 100, 100),
         )
 
-        self._data_address = Path(f"{self._data_folder}/test.mrc")
-        with mrcfile.new(self._data_address) as f:
+        self._data_address = Path(self.tmp_data, "test.mrc")
+        with mrcfile.new(self._data_address, overwrite=True) as f:
             f.set_data(self._test_data.astype(np.float32))
 
-        self.params = config.objectify_user_input(
+        self._params_dict = dict(
             autocontrast=True,
             adaptive=False,
             bandpass=False,
@@ -77,9 +76,10 @@ class EvaluateTest(unittest.TestCase):
             displacement_limit=25,
             displacement_std_limit=5,
         )
+        self.params = objects.Config(**self._params_dict)
 
         # Run single analysis to get output for subsequent tests
-        os.chdir(self._anlys_folder)
+        os.chdir(self.tmp_anlys)
         self._single_out = EV.eval_single(fname=self._data_address, params=self.params)
 
         # Set up a dummy Lamella object
@@ -91,7 +91,7 @@ class EvaluateTest(unittest.TestCase):
         pass
 
     def test_find_files(self):
-        filelist = EV.find_files(self._data_folder)
+        filelist = EV.find_files(self.tmp_data)
 
         # Tests
         self.assertIsInstance(filelist, list)
@@ -99,21 +99,20 @@ class EvaluateTest(unittest.TestCase):
 
     def test_save_figure(self):
         surface_info = self._single_out.surfaces
-        fig_path = Path(f"{self._models_folder}/test_fig.png")
-        EV.save_figure(surface_info=surface_info, save_path=fig_path, binning=1)
+        fig_path = Path(self.tmp_anlys, "test_fig.png")
+        EV.save_figure(surface_info=surface_info, save_path=str(fig_path), binning=1)
 
         self.assertTrue(fig_path.is_file())
 
     def test_save_text_model(self):
         surface_info = self._single_out.surfaces
-        fig_path = Path(f"{self._models_folder}/test_fig.txt")
-        EV.save_text_model(surface_info=surface_info, save_path=fig_path, binning=1)
+        txt_path = Path(self.tmp_anlys, "test.txt")
+        EV.save_text_model(surface_info=surface_info, save_path=txt_path, binning=1)
 
-        self.assertTrue(fig_path.is_file())
+        self.assertTrue(txt_path.is_file())
 
     def test_eval_single(self):
         self.assertIsInstance(self._single_out, objects.Result)
-        print(type(self._single_out.surfaces))
 
         self.assertIsInstance(self._single_out.yz_stats, np.ndarray)
         self.assertIsInstance(self._single_out.xz_stats, np.ndarray)
@@ -126,8 +125,8 @@ class EvaluateTest(unittest.TestCase):
         self.assertIsInstance(self._single_out.adaptive_triggered, bool)
 
     def test_eval_batch(self):
-        os.chdir(self._anlys_folder)
-        filelist = EV.find_files(self._data_folder)
+        os.chdir(self.tmp_anlys)
+        filelist = EV.find_files(self.tmp_data)
 
         out = EV.eval_batch(filelist=filelist, params=self.params)
         self.assertEqual(len(out), 4)
@@ -156,7 +155,10 @@ class EvaluateTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        self.tmpdir.cleanup()
+        os.chdir(self.orig_path)
+        shutil.rmtree(self.tmp_data, ignore_errors=True)
+        shutil.rmtree(self.tmp_anlys, ignore_errors=True)
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
         pass
