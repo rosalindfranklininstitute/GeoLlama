@@ -22,7 +22,8 @@
 
 import sys
 import os
-import tempfile
+from pathlib import Path
+import shutil
 import unittest
 import multiprocessing as mp
 
@@ -39,22 +40,28 @@ class ConfigTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Set up temp folder structure
-        self.tmpdir = tempfile.TemporaryDirectory()
-        os.mkdir(f"{self.tmpdir.name}/data")
-        os.mkdir(f"{self.tmpdir.name}/anlys")
+        self.orig_path = Path(os.getcwd())
+        self.tmpdir = Path(os.getcwd() + "/temp/")
+        self.tmp_data = Path(self.tmpdir, "data")
+        self.tmp_anlys = Path(self.tmpdir, "anlys")
+
+        # Create folders
+        self.tmpdir.mkdir(exist_ok=True)
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
 
     def setUp(self):
         pass
 
     def test_generate_config(self):
-        os.chdir(f"{self.tmpdir.name}/anlys")
+        os.chdir(self.tmp_anlys)
 
         config.generate_config(f"./new_config.yaml")
         self.assertTrue(os.path.exists("./new_config.yaml"))
 
     def test_read_config(self):
         # Generate default config file
-        os.chdir(f"{self.tmpdir.name}/anlys")
+        os.chdir(self.tmp_anlys)
         config.generate_config("./config.yaml")
 
         # Test if config file is read correctly
@@ -82,7 +89,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_check_config(self):
         params_dict = dict(
-            data_path=f"{self.tmpdir.name}/data",
+            data_path=self.tmp_data,
             pixel_size_nm=1,
             binning=1,
             num_cores=1,
@@ -151,7 +158,10 @@ class ConfigTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        self.tmpdir.cleanup()
+        os.chdir(self.orig_path)
+        shutil.rmtree(self.tmp_data, ignore_errors=True)
+        shutil.rmtree(self.tmp_anlys, ignore_errors=True)
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
         pass
