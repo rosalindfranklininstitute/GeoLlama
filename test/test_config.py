@@ -158,6 +158,9 @@ class ConfigTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        os.chdir(self.orig_path)
+        shutil.rmtree(self.tmp_data, ignore_errors=True)
+        shutil.rmtree(self.tmp_anlys, ignore_errors=True)
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
