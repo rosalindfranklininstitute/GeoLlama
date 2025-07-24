@@ -41,9 +41,9 @@ class ConfigTest(unittest.TestCase):
     def setUpClass(self):
         # Set up temp folder structure
         self.tmpdir = Path(os.getcwd() + "/temp/")
-        os.mkdir(f"{self.tmpdir}")
-        os.mkdir(f"{self.tmpdir.name}/data")
-        os.mkdir(f"{self.tmpdir.name}/anlys")
+        Path(self.tmpdir).mkdir(exist_ok=True)
+        Path(self.tmpdir, "data").mkdir(exist_ok=True)
+        Path(self.tmpdir, "anlys").mkdir(exist_ok=True)
 
     def setUp(self):
         pass
