@@ -20,6 +20,8 @@
 #######################################
 
 import logging
+from pathlib import Path
+from typing import Union
 
 import numpy.typing as npt
 
@@ -30,7 +32,7 @@ from geollama import objects
 
 
 def read_mrc(
-    fname: str,
+    fname: Union[str, Path],
     params: objects.Config,
 ) -> (npt.NDArray[any], float):
     """
@@ -40,7 +42,7 @@ def read_mrc(
 
     Parameters
     ----------
-    fname : str
+    fname : str or Path
         Path to image file
     params : Config
         Config object containing all parameters for GeoLlama

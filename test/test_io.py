@@ -20,10 +20,10 @@
 ###########################################
 
 
-import sys
 import os
-import tempfile
+import shutil
 import unittest
+from pathlib import Path
 
 import numpy as np
 import mrcfile
@@ -35,6 +35,17 @@ class IOSmokeTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
+        # Set up temp folder structure
+        self.orig_path = Path(os.getcwd())
+        self.tmpdir = Path(os.getcwd(), "/temp/")
+        self.tmp_data = Path(self.tmpdir, "data")
+        self.tmp_anlys = Path(self.tmpdir, "anlys")
+
+        # Create folders
+        self.tmpdir.mkdir(exist_ok=True)
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
+
         self._params_dict = dict(
             autocontrast=True,
             adaptive=False,
@@ -57,22 +68,22 @@ class IOSmokeTest(unittest.TestCase):
         )
         self.params = objects.Config(**self._params_dict)
 
-    def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-
         self.test_data = np.full(
             shape=(100, 100, 100), fill_value=1.0, dtype=np.float32
         )
 
-        tmp_address = f"{self.tmpdir.name}/test.mrc"
+        tmp_address = Path(self.tmp_data, "test.mrc")
         with mrcfile.new(tmp_address) as f:
             f.set_data(self.test_data)
 
+    def setUp(self):
+        pass
+
     def test_read_mrc(self):
-        os.chdir(self.tmpdir.name)
+        os.chdir(self.tmpdir)
         # Test whether image remains unchanged if no binning
         data_out, px_size, shape_in, binning, data_in = io.read_mrc(
-            fname="./test.mrc",
+            fname=Path(self.tmp_data, "test.mrc"),
             params=self.params,
         )
         self.assertIsInstance(data_out, np.ndarray)
@@ -83,7 +94,8 @@ class IOSmokeTest(unittest.TestCase):
         # Test whether image has been correctly binned
         self.params.binning = 2
         data_ds, px_size_ds, shape_in, binning, data_in = io.read_mrc(
-            fname="./test.mrc", params=self.params
+            fname=Path(self.tmp_data, "test.mrc"),
+            params=self.params
         )
         self.assertEqual(data_ds.shape, (50, 50, 50))
         self.assertAlmostEqual(px_size_ds, 2.0, places=7)
@@ -92,7 +104,10 @@ class IOSmokeTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        pass
+        os.chdir(self.orig_path)
+        shutil.rmtree(self.tmp_data, ignore_errors=True)
+        shutil.rmtree(self.tmp_anlys, ignore_errors=True)
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
-        self.tmpdir.cleanup()
+        pass
