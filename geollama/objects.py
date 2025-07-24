@@ -28,7 +28,7 @@ import multiprocessing as mp
 import numpy.typing as npt
 
 
-class Config():
+class Config:
     """
     Object containing parameters for GeoLlama, and a self-validation function.
 
@@ -77,7 +77,8 @@ class Config():
     Moreover, it also assumes that the pixel spacing is consistent among the three axes of a tomogram.
     """
 
-    def __init__(self,
+    def __init__(
+        self,
         data_path: str,
         pixel_size_nm: float,
         binning: int,
@@ -115,7 +116,6 @@ class Config():
         self.xtilt_std_limit = xtilt_std_limit
         self.displacement_limit = displacement_limit
         self.displacement_std_limit = displacement_std_limit
-
 
     def validate(self):
         """

@@ -125,7 +125,6 @@ class MainTest(unittest.TestCase):
             self.assertTrue(os.path.exists(Path(self.tmp_anlys, "./test.csv")))
             self.assertTrue(os.path.exists(Path(self.tmp_anlys, "./test.star")))
 
-
     @classmethod
     def tearDownClass(self):
         os.chdir(self.orig_path)

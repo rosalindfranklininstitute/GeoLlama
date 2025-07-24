@@ -32,6 +32,7 @@ import pandas as pd
 import starfile
 
 from geollama import config, objects
+
 # from geollama.templates.report_template import params_str
 
 
@@ -85,7 +86,6 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.xtilt_std_limit, 5)
         self.assertEqual(params.displacement_limit, 25)
         self.assertEqual(params.displacement_std_limit, 5)
-
 
     def test_check_config(self):
         params_dict = dict(

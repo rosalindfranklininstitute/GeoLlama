@@ -68,6 +68,7 @@ class Lamella:
     ytilt : float
         aggregated y-tilt angle of lamella
     """
+
     centroid: list
     thickness: float
     breadth: float
@@ -298,8 +299,9 @@ def _eval_generator(filelist_in: list, params: objects.Config):
             yield eval_result
 
 
-def eval_batch(filelist: list, params: objects.Config
-               ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, int):
+def eval_batch(
+    filelist: list, params: objects.Config
+) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, int):
     """
     Evaluate geometry of tomograms given path to folder containing tomograms, then output statistics as pandas DataFrames.
 

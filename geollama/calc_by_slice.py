@@ -323,7 +323,7 @@ def evaluate_slice(
 ):
     """
     Evaluates lamella geometry at given position.
-    
+
     Parameters
     ----------
     view_input : ndarray
@@ -445,7 +445,15 @@ def evaluate_full_lamella(
     cpu: int = 1,
     discard_pct: float = 20,
     step_pct: float = 2.5,
-) -> (npt.NDArray, npt.NDArray, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, tuple):
+) -> (
+    npt.NDArray,
+    npt.NDArray,
+    npt.ArrayLike,
+    npt.ArrayLike,
+    npt.ArrayLike,
+    npt.ArrayLike,
+    tuple,
+):
     """
     Evaluate geometry of lamella from given tomogram.
 

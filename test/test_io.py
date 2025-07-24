@@ -94,8 +94,7 @@ class IOSmokeTest(unittest.TestCase):
         # Test whether image has been correctly binned
         self.params.binning = 2
         data_ds, px_size_ds, shape_in, binning, data_in = io.read_mrc(
-            fname=Path(self.tmp_data, "test.mrc"),
-            params=self.params
+            fname=Path(self.tmp_data, "test.mrc"), params=self.params
         )
         self.assertEqual(data_ds.shape, (50, 50, 50))
         self.assertAlmostEqual(px_size_ds, 2.0, places=7)
