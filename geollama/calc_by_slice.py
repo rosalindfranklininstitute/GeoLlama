@@ -31,7 +31,7 @@ from numpy.lib.stride_tricks import sliding_window_view as swv
 from skimage.filters import threshold_otsu as otsu
 from skimage.filters import gaussian
 
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import HDBSCAN
 from sklearn.decomposition import PCA
 
 from scipy.stats import mode, t, sem
@@ -372,12 +372,16 @@ def evaluate_slice(
         jackknife_dist[idx] = np.linalg.norm((diffs @ S_inv.T @ diffs.T).diagonal())
 
     conf_limit = t.interval(
-        confidence=0.999, df=2, loc=jackknife_dist.mean(), scale=sem(jackknife_dist)
+        confidence=0.99, df=2, loc=jackknife_dist.mean(), scale=sem(jackknife_dist)
     )[1]
     mask_s2 = np.squeeze(mask_s1[np.argwhere(jackknife_dist <= conf_limit)], axis=1)
 
     # Step 3: Use distance-based clustering to find sample region
-    clusters = DBSCAN(eps=15, min_samples=350).fit_predict(mask_s2)
+    min_samples = min(350, len(mask_s2))
+    eps = np.sqrt(2 * min_samples / np.pi)
+    clusters = HDBSCAN(
+        cluster_selection_epsilon=eps, min_samples=min_samples
+    ).fit_predict(mask_s2)
     mask_s3_args = np.argwhere(clusters == mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
