@@ -38,6 +38,8 @@ from scipy.stats import mode, t, sem
 import scipy.interpolate as spin
 from scipy.signal import convolve2d as c2d
 
+from icecream import ic
+
 
 def filter_bandpass(
     image: npt.NDArray[any],
@@ -405,7 +407,10 @@ def evaluate_slice(
     breadth_axis = np.argmin(np.abs(eigenvecs[:, 0]))
     if eigenvecs[breadth_axis, 1] < 0:
         eigenvecs[breadth_axis] *= -1  # Ensure breadth axis always points "right"
-    if np.cross(eigenvecs[breadth_axis], eigenvecs[1 - breadth_axis]) > 0:
+    if (
+        np.cross([*eigenvecs[breadth_axis], 0], [*eigenvecs[1 - breadth_axis], 0])[2]
+        > 0
+    ):
         eigenvecs[1 - breadth_axis] *= -1  # Ensure thickness axis always points "up"
 
     angle = 90 + np.rad2deg(
