@@ -22,7 +22,8 @@
 
 import sys
 import os
-import tempfile
+from pathlib import Path
+import shutil
 import unittest
 import multiprocessing as mp
 
@@ -32,34 +33,43 @@ import starfile
 
 from geollama import config, objects
 
+# from geollama.templates.report_template import params_str
+
 
 class ConfigTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
         # Set up temp folder structure
-        self.tmpdir = tempfile.TemporaryDirectory()
-        os.mkdir(f"{self.tmpdir.name}/data")
-        os.mkdir(f"{self.tmpdir.name}/anlys")
+        self.orig_path = Path(os.getcwd())
+        self.tmpdir = Path(os.getcwd() + "/temp/")
+        self.tmp_data = Path(self.tmpdir, "data")
+        self.tmp_anlys = Path(self.tmpdir, "anlys")
+
+        # Create folders
+        self.tmpdir.mkdir(exist_ok=True)
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
 
     def setUp(self):
         pass
 
     def test_generate_config(self):
-        os.chdir(f"{self.tmpdir.name}/anlys")
+        os.chdir(self.tmp_anlys)
 
         config.generate_config(f"./new_config.yaml")
         self.assertTrue(os.path.exists("./new_config.yaml"))
 
     def test_read_config(self):
         # Generate default config file
-        os.chdir(f"{self.tmpdir.name}/anlys")
+        os.chdir(self.tmp_anlys)
         config.generate_config("./config.yaml")
 
         # Test if config file is read correctly
-        params = config.read_config("./config.yaml")
+        params_dict = config.read_config("./config.yaml")
+        self.assertTrue(isinstance(params_dict, dict))
 
-        self.assertTrue(isinstance(params, objects.Config))
+        params = objects.Config(**params_dict)
         self.assertIsNone(params.data_path)
         self.assertIsNone(params.pixel_size_nm)
         self.assertEqual(params.binning, 0)
@@ -77,51 +87,9 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(params.displacement_limit, 25)
         self.assertEqual(params.displacement_std_limit, 5)
 
-    def test_objectify_user_input(self):
-        params = config.objectify_user_input(
-            autocontrast=False,
-            adaptive=False,
-            bandpass=False,
-            data_path=None,
-            pixel_size_nm=None,
-            binning=1,
-            num_cores=1,
-            output_csv_path=None,
-            output_star_path=None,
-            generate_report=False,
-            output_mask=False,
-            printout=False,
-            thickness_lower_limit=120,
-            thickness_upper_limit=300,
-            thickness_std_limit=15,
-            xtilt_std_limit=5,
-            displacement_limit=25,
-            displacement_std_limit=5,
-        )
-
-        self.assertTrue(isinstance(params, objects.Config))
-        self.assertEqual(params.data_path, None)
-        self.assertEqual(params.pixel_size_nm, None)
-        self.assertEqual(params.binning, 1)
-        self.assertFalse(params.autocontrast)
-        self.assertFalse(params.adaptive)
-        self.assertFalse(params.bandpass)
-        self.assertEqual(params.num_cores, 1)
-        self.assertEqual(params.output_csv_path, None)
-        self.assertEqual(params.output_star_path, None)
-        self.assertFalse(params.output_mask)
-        self.assertFalse(params.printout)
-        self.assertFalse(params.generate_report)
-        self.assertEqual(params.thickness_lower_limit, 120)
-        self.assertEqual(params.thickness_upper_limit, 300)
-        self.assertEqual(params.thickness_std_limit, 15)
-        self.assertEqual(params.xtilt_std_limit, 5)
-        self.assertEqual(params.displacement_limit, 25)
-        self.assertEqual(params.displacement_std_limit, 5)
-
     def test_check_config(self):
-        params = config.objectify_user_input(
-            data_path=f"{self.tmpdir.name}/data",
+        params_dict = dict(
+            data_path=self.tmp_data,
             pixel_size_nm=1,
             binning=1,
             num_cores=1,
@@ -142,54 +110,58 @@ class ConfigTest(unittest.TestCase):
         )
 
         # Test for None path exception handling
+        params = objects.Config(**params_dict)
         params.data_path = None
         with self.assertRaises(ValueError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
 
         # Test for non-directory path exception handling
+        params = objects.Config(**params_dict)
         params.data_path = "random string"
         with self.assertRaises(NotADirectoryError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
-
-        params.data_path = (
-            f"{self.tmpdir.name}/data"  # Reset params data_path to acceptable value
-        )
 
         # Tests for wrong pixel size exception handling
+        params = objects.Config(**params_dict)
         params.pixel_size_nm = None
         with self.assertRaises(ValueError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
 
+        params = objects.Config(**params_dict)
         params.pixel_size_nm = -1
         with self.assertRaises(ValueError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
-
-        params.pixel_size_nm = 1  # Reset params pixel_size_nm to acceptable value
 
         # Tests for wrong number of cores exception handling
+        params = objects.Config(**params_dict)
         params.num_cores = 1.5
         with self.assertRaises(ValueError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
 
+        params = objects.Config(**params_dict)
         params.num_cores = mp.cpu_count() + 1
         with self.assertRaises(ValueError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
 
         # Test for report generation exception handling
+        params = objects.Config(**params_dict)
         params.generate_report = True
         with self.assertRaises(ValueError) as cm:
-            config.check_config(params)
+            params.validate()
         self.assertNotEqual(cm.exception, 0)
 
     @classmethod
     def tearDownClass(self):
-        self.tmpdir.cleanup()
+        os.chdir(self.orig_path)
+        shutil.rmtree(self.tmp_data, ignore_errors=True)
+        shutil.rmtree(self.tmp_anlys, ignore_errors=True)
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
         pass

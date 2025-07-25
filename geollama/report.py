@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.report  ##
 ## Created            : Neville Yee      ##
 ## Date created       : 16-Sep-2024      ##
-## Date last modified : 17-Sep-2024      ##
+## Date last modified : 22-Jul-2025      ##
 ###########################################
 
 import logging
@@ -33,13 +33,17 @@ import papermill as pm
 
 def read_ipynb(ipynb_path: Path) -> dict:
     """
-    Reads in a Jupyter notebook and returns the underlying JSON as a dict.
+    Read in a Jupyter notebook and returns the underlying JSON as a dict.
 
-    Args:
-    ipynb_path (Path) : Path to Jupyter notebook template
+    Parameters
+    ----------
+    ipynb_path : Path
+        Path to Jupyter notebook (report)
 
-    Returns:
+    Returns
+    -------
     dict
+        Dictionary from reading in JSON metadata from the given Jupyter notebook
     """
     nb = pkg_resources.resource_filename("geollama.templates", ipynb_path)
     with open(nb, "r") as f:
@@ -51,14 +55,14 @@ def write_ipynb(
     nb_data: dict,
 ):
     """
-    Write out Jupyter notebook with given data / metadata
+    Write out Jupyter notebook with given data / metadata.
 
-    Args:
-    ipynb_path (Path) : Target path for saving notebook
-    nb_data (dict) : Dictionary containing JSON metadata for conversion into report
-
-    Returns:
-    None
+    Parameters
+    ----------
+    ipynb_path : Path
+        Path to Jupyter notebook (report)
+    nb_data : dict
+        Dictionary containing JSON metadata for conversion into report
     """
     with open(ipynb_path, "w", encoding="utf-8") as f:
         json.dump(nb_data, f)
@@ -66,12 +70,17 @@ def write_ipynb(
 
 def generate_report(report_path: Path, star_path: Path, to_html: bool = False):
     """
-    Generates temporary Jupyter notebook and converts it using papermill
+    Generate temporary Jupyter notebook and convert it using papermill.
 
-    Args:
-    report_path (Path) : Target path for saving completed report
-    star_path (Path) : Path to GeoLlama-STAR file for report generation
-    to_html (bool) : Whether to convert the executed report into HTML format
+    Parameters
+    ----------
+    report_path : Path
+        Target path for saving completed report
+    star_path : Path
+        Path to GeoLlama-STAR file for report generation
+    to_html : bool
+        Convert executed report into HTML format
+
     """
     if report_path.exists():
         warnings.warn(f"{report_path} exists. Old report will be rewritten.")
