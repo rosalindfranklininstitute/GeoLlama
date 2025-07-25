@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.config  ##
 ## Created            : Neville Yee      ##
 ## Date created       : 03-May-2024      ##
-## Date last modified : 03-May-2024      ##
+## Date last modified : 22-Jul-2025      ##
 ###########################################
 
 import os
@@ -25,15 +25,15 @@ import typing
 from pathlib import Path
 import multiprocessing as mp
 
-from geollama import objects
-
 
 def generate_config(output_path):
     """
-    Generates default configuration file
+    Generate default configuration YAML file.
 
-    Args:
-    output_path (str) : Path to output yaml file
+    Parameters
+    ----------
+    output_path : str
+        Path to output YAML file
     """
     import ruamel.yaml
 
@@ -93,15 +93,19 @@ displacement_std_limit : 5
     yaml.dump(data, Path(output_path))
 
 
-def read_config(config_fname: str) -> objects.Config:
+def read_config(config_fname: str) -> dict:
     """
-    Parse GeoLlama config YAML file
+    Parse GeoLlama config YAML file and return a dictionary of parameters.
 
-    Args:
-    config_fname (str) : Path to config file
+    Parameters
+    ----------
+    config_fname : str
+        Path to YAML configuration file
 
-    Returns:
-    Config
+    Returns
+    -------
+    config_dict : dict
+        Dictionary containing all parameters for GeoLlama
     """
     import ruamel.yaml
 
@@ -111,97 +115,4 @@ def read_config(config_fname: str) -> objects.Config:
     yaml = ruamel.yaml.YAML()
     config_dict = yaml.load(Path(config_fname))
 
-    # Initialise a Config object
-    params = objects.Config()
-
-    # Check config file has correct dictionary keys
-    for key in params.__dict__.keys():
-        try:
-            params.__setattr__(key, config_dict[key])
-        except ValueError:
-            print(f"{key} keyword missing in config file.")
-
-    return params
-
-
-def objectify_user_input(
-    autocontrast: typing.Optional[bool],
-    adaptive: typing.Optional[bool],
-    bandpass: typing.Optional[bool],
-    data_path: typing.Optional[str],
-    pixel_size_nm: typing.Optional[float],
-    binning: typing.Optional[int],
-    num_cores: typing.Optional[int],
-    output_csv_path: typing.Optional[str],
-    output_star_path: typing.Optional[str],
-    output_mask: typing.Optional[bool],
-    generate_report: typing.Optional[bool],
-    printout: typing.Optional[bool],
-    thickness_lower_limit: typing.Optional[float],
-    thickness_upper_limit: typing.Optional[float],
-    thickness_std_limit: typing.Optional[float],
-    xtilt_std_limit: typing.Optional[float],
-    displacement_limit: typing.Optional[float],
-    displacement_std_limit: typing.Optional[float],
-) -> objects.Config:
-    """
-    Objectifying user provided input as a Config object
-
-    Args:
-    autocontrast (bool) : Apply autocontrast to slices prior to evaluation
-    adaptive (bool) : Use adaptive sampling for slice evaluation
-    bandpass (bool) : Apply bandpass filter to tomograms prior to evaluation
-    user_path (str) : Path to folder holding all tomograms in batch mode
-    pixel_size (float) : Pixel size of input tomogram in nm
-    binning (int) : Binning factor for tomogram evaluation
-    cpu (int) : Number of CPUs used
-    output_csv (str) : Output path for CSV file
-    output_star (str) : Output path for STAR file
-    output_mask (bool) : Produce 3D mask of estimated lamella region (same shape as input tomogram)
-    generate_report (bool) : Automatically generate report at the end of calculations
-    thickness_lower_limit (float) : Lower limit of lamella thickness in nm (for feature extraction)
-    thickness_upper_limit (float) : Upper limit of lamella thickness in nm (for feature extraction)
-    thickness_std_limit (float) : Limit of lamella thickness standard deviation in nm (for feature extraction)
-    xtilt_std_limit (float) : Limit of lamella xtilt standard deviation in degrees (for feature extraction)
-    displacement_limit (float) : Limit of lamella centroid displacement in % (for feature extraction)
-    displacement_std_limit (float) : Limit of lamella centroid displacement standard deviation in % (for feature extraction)
-
-    Returns:
-    Config
-    """
-    params = objects.Config()
-    for key in params.__dict__.keys():
-        params.__setattr__(key, locals()[key])
-
-    return params
-
-
-def check_config(params: objects.Config):
-    """
-    Check datatypes in parameters
-
-    Args:
-    config (Config) : Config object storing all parameters
-    """
-
-    if params.data_path is None:
-        raise ValueError("Data path (-p) must be given.")
-    elif not os.path.isdir(Path(params.data_path)):
-        raise NotADirectoryError("Given path must be a folder.")
-
-    if params.pixel_size_nm is None:
-        raise ValueError("Pixel size (-s) must be given.")
-    elif params.pixel_size_nm <= 0:
-        raise ValueError("Pixel size (-s) must be a positive number.")
-
-    if not isinstance(params.num_cores, int):
-        raise ValueError("num_cores (-np) must be an integer.")
-    elif not 1 <= params.num_cores <= mp.cpu_count():
-        raise ValueError(
-            f"num_cores (-np) must be between 1 and # CPUs available ({mp.cpu_count()}). Current settings: {params.num_cores}"
-        )
-
-    if params.generate_report and params.output_star_path is None:
-        raise ValueError(
-            "Output STAR file must be specified for automatic report generation."
-        )
+    return config_dict

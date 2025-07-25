@@ -20,9 +20,9 @@
 ######################################################
 
 import unittest
-from types import NoneType
 
 import numpy as np
+import pytest
 
 from geollama import calc_by_slice as CBS
 
@@ -102,7 +102,9 @@ class CalcBySliceTest(unittest.TestCase):
         out = CBS.leave_one_out(contour_pts=self.coords)
 
         # Tests
-        self.assertIsInstance(out, int | NoneType)
+        assert (
+            isinstance(out, int) or out is None
+        ), "The output from CBS.leave_one_out should be either an int or a NoneType."
 
     def test_refine_contour_LOO(self):
         # Run refine_contour_LOO
