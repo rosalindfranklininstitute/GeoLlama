@@ -374,7 +374,7 @@ done
             "start_time": [start_time.astimezone().isoformat(timespec="seconds")],
             "end_time": [end_time.astimezone().isoformat(timespec="seconds")],
             "time_elapsed": [
-                re.sub("\s", "", re.sub("day[s]*,", "D", str(end_time - start_time)))
+                re.sub(r"\s", "", re.sub("day[s]*,", "D", str(end_time - start_time)))
             ],
             "adaptive_count": adaptive_count,
             "thickness_lower_limit": params.thickness_lower_limit,

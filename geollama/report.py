@@ -16,7 +16,7 @@
 ## Module             : GeoLlama.report  ##
 ## Created            : Neville Yee      ##
 ## Date created       : 16-Sep-2024      ##
-## Date last modified : 22-Jul-2025      ##
+## Date last modified : 25-Jul-2025      ##
 ###########################################
 
 import logging
@@ -24,11 +24,12 @@ import logging
 import warnings
 import subprocess
 from pathlib import Path
-import pkg_resources
+from importlib.resources import as_file, files
 
 import json
-
 import papermill as pm
+
+import geollama
 
 
 def read_ipynb(ipynb_path: Path) -> dict:
@@ -45,9 +46,9 @@ def read_ipynb(ipynb_path: Path) -> dict:
     dict
         Dictionary from reading in JSON metadata from the given Jupyter notebook
     """
-    nb = pkg_resources.resource_filename("geollama.templates", ipynb_path)
-    with open(nb, "r") as f:
-        return json.load(f)
+    with as_file(files(geollama.templates) / "report_template.ipynb") as nb:
+        with open(nb, "r") as f:
+            return json.load(f)
 
 
 def write_ipynb(
