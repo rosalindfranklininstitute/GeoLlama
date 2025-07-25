@@ -16,10 +16,12 @@
 ## Module             : GeoLlama.io  ##
 ## Created            : Neville Yee  ##
 ## Date created       : 02-Oct-2023  ##
-## Date last modified : 02-Oct-2023  ##
+## Date last modified : 22-Jul-2025  ##
 #######################################
 
 import logging
+from pathlib import Path
+from typing import Union
 
 import numpy.typing as npt
 
@@ -30,21 +32,37 @@ from geollama import objects
 
 
 def read_mrc(
-    fname: str,
+    fname: Union[str, Path],
     params: objects.Config,
 ) -> (npt.NDArray[any], float):
     """
-    Function to read in MRC image file.
+    Read in an mrc image file, then output data as ndarray with essential metadata.
+    If user specifies `binning == 0` then determine the internal binning factor such that the shortest dimension of the
+    volume is downscaled to a length of about 128 pixels.
 
-    Args:
-    fname (str) : Path to image file
-    px_size_nm (float) : Pixel size of original tomogram in nm
-    downscale (int) : Internal binning factor
+    Parameters
+    ----------
+    fname : str or Path
+        Path to image file
+    params : Config
+        Config object containing all parameters for GeoLlama
 
-    Returns:
-    ndarray, float
+    Returns
+    -------
+    data : ndarray
+        - If `binning == 1`, return the original volumetric data
+        - If `binning > 1`, return the binned data
+    pixel_size : float
+        - If `binning == 1`, return the original pixel spacing
+        - If `binning > 1`, return the pixel spacing after binning
+    original_shape : tuple
+        Shape (dimensionality) of original volume
+    binning : int
+        Actual internal binning factor
+    data : ndarray or None
+        - If `binning == 1`, return None
+        - If `binning > 1`, return original (unbinned) volume
     """
-
     with mrcfile.open(fname) as f:
         data = f.data
         original_shape = data.shape

@@ -20,9 +20,11 @@
 #############################################
 
 
-import sys
 import os
 import tempfile
+import platform
+from pathlib import Path
+import shutil
 import unittest
 import unittest.mock as mock
 import multiprocessing as mp
@@ -39,22 +41,37 @@ class MainTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Set up temp folder structure
-        self.tmpdir = tempfile.TemporaryDirectory()
-        os.mkdir(f"{self.tmpdir.name}/data")
-        os.mkdir(f"{self.tmpdir.name}/anlys")
+        self.orig_path = Path(os.getcwd())
+
+        if mysys := platform.system() == "Windows":
+            self.tmpdir = Path(self.orig_path, "temp")
+            self.tmpdir.mkdir(exist_ok=True)
+        else:
+            self.tmpdir = Path(tempfile.mkdtemp())
+        self.tmp_data = Path(self.tmpdir, "data")
+        self.tmp_anlys = Path(self.tmpdir, "anlys")
+
+        # Create folders
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
+
+        # Create folders
+        self.tmpdir.mkdir(exist_ok=True)
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
 
     def setUp(self):
         pass
 
     def test_generate_config(self):
-        os.chdir(f"{self.tmpdir.name}/anlys")
+        os.chdir(self.tmp_anlys)
 
         with mock.patch.object(config, "generate_config") as m:
             main.generate_config()
             self.assertTrue(m.called)
 
     def test_main(self):
-        os.chdir(f"{self.tmpdir.name}/anlys")
+        os.chdir(self.tmp_anlys)
 
         # Create random dataframe as mock output from eval_batch
         raw_df = pd.DataFrame(
@@ -107,29 +124,24 @@ class MainTest(unittest.TestCase):
             return_value=(raw_df, analytics_df, show_df, adaptive_count),
         ) as m:
             main.main(
-                data_path="../data",
+                data_path=self.tmp_data,
                 pixel_size_nm=1,
-                output_csv_path="./test.csv",
-                output_star_path="./test.star",
+                output_csv_path=Path(self.tmp_anlys, "./test.csv"),
+                output_star_path=Path(self.tmp_anlys, "./test.star"),
                 report=False,
                 printout=False,
             )
 
             # Test if files are created
-            self.assertTrue(os.path.exists("./test.csv"))
-            self.assertTrue(os.path.exists("./test.star"))
-
-            # # Read in created files
-            # csv_df = pd.read_csv("./test.csv", index_col=False)
-            # star_df = starfile.read("./test.star")
-
-            # # Test if exported values are correct
-            # pd.testing.assert_frame_equal(mock_df, csv_df)
-            # pd.testing.assert_frame_equal(mock_df, star_df)
+            self.assertTrue(os.path.exists(Path(self.tmp_anlys, "./test.csv")))
+            self.assertTrue(os.path.exists(Path(self.tmp_anlys, "./test.star")))
 
     @classmethod
     def tearDownClass(self):
-        self.tmpdir.cleanup()
+        os.chdir(self.orig_path)
+        shutil.rmtree(self.tmp_data, ignore_errors=True)
+        shutil.rmtree(self.tmp_anlys, ignore_errors=True)
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def tearDown(self):
         pass

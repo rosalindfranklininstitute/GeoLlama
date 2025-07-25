@@ -161,3 +161,6 @@ cython_debug/
 
 # emacs backup files
 *.*~
+
+# Lock files
+*.lock
