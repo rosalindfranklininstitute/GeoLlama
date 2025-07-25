@@ -1,20 +1,35 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: GeoLlama
+name: GeoLlama nightly build
 
 on:
-  push:
-    branches: [ "main", "dev" ]
-  pull_request:
-    branches: [ "main", "dev" ]
+  schedule:
+    - cron: "0 0 * * *"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  build:
+  check_date:
+    runs-on: ubuntu-latest
+    name: CHeck latest commit
+    outputs:
+      should_run: ${{ steps.should_run.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: print latest_commit
+        run: echo ${{ github.sha }}
 
+      - id: should_run
+        continue-on-error: true
+        name: Check latest commit is less than a day
+        if: ${{ github.even_name == "schedule" }}
+        run: test -z $(git rev-list --after="24 hours" ${{ github.sha }}) && echo "::set-output name=should_run::false"
+
+  build:
+    needs: check_date
+    if: ${{ needs.check_date.outputs.should_run != "false" }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -31,7 +46,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 black pytest pytest-cov
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Install package
       run: |
         python -m pip install -e .
