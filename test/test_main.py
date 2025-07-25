@@ -21,6 +21,8 @@
 
 
 import os
+import tempfile
+import platform
 from pathlib import Path
 import shutil
 import unittest
@@ -40,9 +42,18 @@ class MainTest(unittest.TestCase):
     def setUpClass(self):
         # Set up temp folder structure
         self.orig_path = Path(os.getcwd())
-        self.tmpdir = Path(os.getcwd(), "/temp/")
+
+        if mysys := platform.system() == "Windows":
+            self.tmpdir = Path(self.orig_path, "temp")
+            self.tmpdir.mkdir(exist_ok=True)
+        else:
+            self.tmpdir = Path(tempfile.mkdtemp())
         self.tmp_data = Path(self.tmpdir, "data")
         self.tmp_anlys = Path(self.tmpdir, "anlys")
+
+        # Create folders
+        self.tmp_data.mkdir(exist_ok=True)
+        self.tmp_anlys.mkdir(exist_ok=True)
 
         # Create folders
         self.tmpdir.mkdir(exist_ok=True)

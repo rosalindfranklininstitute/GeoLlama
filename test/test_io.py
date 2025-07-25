@@ -23,6 +23,8 @@
 import os
 import shutil
 import unittest
+import platform
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -37,12 +39,16 @@ class IOSmokeTest(unittest.TestCase):
     def setUpClass(self):
         # Set up temp folder structure
         self.orig_path = Path(os.getcwd())
-        self.tmpdir = Path(os.getcwd(), "/temp/")
+
+        if mysys := platform.system() == "Windows":
+            self.tmpdir = Path(self.orig_path, "temp")
+            self.tmpdir.mkdir(exist_ok=True)
+        else:
+            self.tmpdir = Path(tempfile.mkdtemp())
         self.tmp_data = Path(self.tmpdir, "data")
         self.tmp_anlys = Path(self.tmpdir, "anlys")
 
         # Create folders
-        self.tmpdir.mkdir(exist_ok=True)
         self.tmp_data.mkdir(exist_ok=True)
         self.tmp_anlys.mkdir(exist_ok=True)
 
