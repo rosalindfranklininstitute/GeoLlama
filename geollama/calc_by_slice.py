@@ -379,7 +379,9 @@ def evaluate_slice(
     # Step 3: Use distance-based clustering to find sample region
     min_samples = min(350, len(mask_s2))
     eps = np.sqrt(2 * min_samples / np.pi)
-    clusters = HDBSCAN(cluster_selection_epsilon=eps, min_samples=min_samples).fit_predict(mask_s2)
+    clusters = HDBSCAN(
+        cluster_selection_epsilon=eps, min_samples=min_samples
+    ).fit_predict(mask_s2)
     mask_s3_args = np.argwhere(clusters == mode(clusters, keepdims=True).mode)
     mask_s3 = mask_s2[mask_s3_args.flatten()]
 
