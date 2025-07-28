@@ -30,6 +30,7 @@ import json
 import papermill as pm
 
 import geollama
+from geollama import templates
 
 
 def read_ipynb(ipynb_path: Path) -> dict:

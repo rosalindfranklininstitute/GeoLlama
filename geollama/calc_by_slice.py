@@ -374,7 +374,7 @@ def evaluate_slice(
         jackknife_dist[idx] = np.linalg.norm((diffs @ S_inv.T @ diffs.T).diagonal())
 
     conf_limit = t.interval(
-        confidence=0.99, df=2, loc=jackknife_dist.mean(), scale=sem(jackknife_dist)
+        confidence=0.9, df=2, loc=jackknife_dist.mean(), scale=sem(jackknife_dist)
     )[1]
     mask_s2 = np.squeeze(mask_s1[np.argwhere(jackknife_dist <= conf_limit)], axis=1)
 
