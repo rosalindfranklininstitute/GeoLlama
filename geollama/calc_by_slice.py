@@ -374,7 +374,7 @@ def evaluate_slice(
         jackknife_dist[idx] = np.linalg.norm((diffs @ S_inv.T @ diffs.T).diagonal())
 
     conf_limit = t.interval(
-        confidence=0.9, df=2, loc=jackknife_dist.mean(), scale=sem(jackknife_dist)
+        confidence=0.9, df=np.inf, loc=jackknife_dist.mean(), scale=sem(jackknife_dist)
     )[1]
     mask_s2 = np.squeeze(mask_s1[np.argwhere(jackknife_dist <= conf_limit)], axis=1)
 
@@ -398,7 +398,8 @@ def evaluate_slice(
 
     # Step 4: Use PCA to find best rectangle fits
     pca = PCA(n_components=2)
-    pca.fit(mask_s3 - lamella_centre)
+    mask_centred = mask_s3 - lamella_centre
+    pca.fit(mask_centred)
     eigenvecs = pca.components_
     eigenvals = np.sqrt(pca.explained_variance_)
     rectangle_dims = eigenvals * 3  # 3 times SD to cover nearly all points
@@ -413,15 +414,14 @@ def evaluate_slice(
     ):
         eigenvecs[1 - breadth_axis] *= -1  # Ensure thickness axis always points "up"
 
-    angle = 90 + np.rad2deg(
+    angle = np.rad2deg(
         np.arctan2(
-            -eigenvecs[np.argmin(eigenvals), 1], eigenvecs[np.argmin(eigenvals), 0]
+            eigenvecs[0, 1], eigenvecs[0, 0]
         )
     )
 
     slice_breadth, slice_thickness = 2 * rectangle_dims * pixel_size_nm
     num_points = len(mask_s3)
-
     cell_vecs = eigenvecs * rectangle_dims.reshape((2, 1))
 
     # Centralise lamella centroid to middle of slice along long axis
