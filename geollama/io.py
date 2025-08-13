@@ -27,6 +27,7 @@ import numpy.typing as npt
 
 import mrcfile
 from skimage.transform import rescale
+from skimage.transform import downscale_local_mean as DSLM
 
 from geollama import objects
 
@@ -74,7 +75,12 @@ def read_mrc(
         logging.info(f"AUTOBIN: {fname.name} - Binning factor={binning}")
 
     if binning > 1:
-        data_ds = rescale(data, 1 / binning, anti_aliasing=False)
+        if isinstance(binning, int):
+            data_ds = DSLM(data, binning)
+        else:
+            binning_int, binning_dec = divmod(binning, 1)
+            data_ds = DSLM(data, int(binning_int))
+            data_ds = rescale(data_ds, binning_int/binning, order=2, anti_aliasing=False, preserve_range=True)
         return (data_ds, params.pixel_size_nm * binning, original_shape, binning, data)
 
     return (data, params.pixel_size_nm, original_shape, binning, None)
