@@ -80,7 +80,13 @@ def read_mrc(
         else:
             binning_int, binning_dec = divmod(binning, 1)
             data_ds = DSLM(data, int(binning_int))
-            data_ds = rescale(data_ds, binning_int/binning, order=2, anti_aliasing=False, preserve_range=True)
+            data_ds = rescale(
+                data_ds,
+                binning_int / binning,
+                order=2,
+                anti_aliasing=False,
+                preserve_range=True,
+            )
         return (data_ds, params.pixel_size_nm * binning, original_shape, binning, data)
 
     return (data, params.pixel_size_nm, original_shape, binning, None)

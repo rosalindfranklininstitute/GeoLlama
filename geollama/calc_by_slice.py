@@ -414,11 +414,7 @@ def evaluate_slice(
     ):
         eigenvecs[1 - breadth_axis] *= -1  # Ensure thickness axis always points "up"
 
-    angle = np.rad2deg(
-        np.arctan2(
-            eigenvecs[0, 1], eigenvecs[0, 0]
-        )
-    )
+    angle = np.rad2deg(np.arctan2(eigenvecs[0, 1], eigenvecs[0, 0]))
 
     slice_breadth, slice_thickness = 2 * rectangle_dims * pixel_size_nm
     num_points = len(mask_s3)
