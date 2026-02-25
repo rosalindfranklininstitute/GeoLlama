@@ -301,15 +301,15 @@ def _eval_generator(filelist_in: list, params: objects.Config):
             except Exception as e:
                 logging.warning(f"Could not process {Path(tomo).stem} due to {e}")
                 null_result = objects.Result(
-                    yz_stats=np.full((1,5), np.nan),
-                    xz_stats=np.full((1,5), np.nan),
+                    yz_stats=np.full((1, 5), np.nan),
+                    xz_stats=np.full((1, 5), np.nan),
                     yz_mean=np.full((5,), np.nan),
                     xz_mean=np.full((5,), np.nan),
                     yz_sem=np.full((5,), np.nan),
                     xz_sem=np.full((5,), np.nan),
                     surfaces=None,
                     binning_factor=None,
-                    adaptive_triggered=False
+                    adaptive_triggered=False,
                 )
                 yield null_result
 

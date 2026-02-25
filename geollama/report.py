@@ -102,7 +102,7 @@ def generate_report(report_path: Path, star_path: Path, to_html: bool = False):
             "starfile_path": str(star_path),
         },
         kernel="python3",
-        allow_errors=True
+        allow_errors=True,
     )
 
     Path(f"{report_path.parent}/{report_path.stem}_tmp.ipynb").unlink()
